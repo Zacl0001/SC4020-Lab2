@@ -1,0 +1,3 @@
+Dataset,Affinity scale,Input rows,Invalid/non-finite/nonpositive scores,Missing/blank IDs,Rows before dedup,Total rows in duplicate groups,Unique duplicated pair groups,Excess rows removed by aggregation,Rows after dedup (observed pairs),Unique ligands,Unique targets
+DAVIS,pKd (converted from nM),30056,0,0,30056,5508,1224,4284,25772,68,379
+KIBA,Original KIBA score,118254,0,0,118254,1070,473,597,117657,2068,229
