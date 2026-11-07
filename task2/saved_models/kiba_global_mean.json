@@ -1,0 +1,11 @@
+{
+  "model": "Global Mean",
+  "dataset": "kiba",
+  "training_mean": 11.721006434637525,
+  "training_observations": 82359,
+  "score_scale": {
+    "name": "KIBA score",
+    "description": "Original supplied KIBA scale; no transformation."
+  },
+  "random_seed": 42
+}

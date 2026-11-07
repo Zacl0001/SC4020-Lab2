@@ -1,0 +1,11 @@
+{
+  "model": "Global Mean",
+  "dataset": "davis",
+  "training_mean": 5.391476305730676,
+  "training_observations": 18040,
+  "score_scale": {
+    "name": "pKd",
+    "description": "Supplied pKd values; no additional log transformation."
+  },
+  "random_seed": 42
+}
