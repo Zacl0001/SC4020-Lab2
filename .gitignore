@@ -1,0 +1,13 @@
+# Local Python environment and generated caches.
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local preservation archives and review-only files.
+.local_artifacts/
+
+# Reconstructible full-run states; retain compact scientific evidence instead.
+/task2/results/biased_mf/runs/
+/task2/results/biased_mf/checkpoints/
+/task2/results/biased_mf_reproductions/
