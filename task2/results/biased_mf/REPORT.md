@@ -1,11 +1,12 @@
 # Biased MF: capacity, regularization and validation generalization
 
-> **Code-only publication:** this report preserves the completed campaign's
-> measured findings. Checkpoints, CSVs, figures, notebook and provenance archives
-> are retained locally but excluded from this GitHub push. Artifact paths below
-> identify local/generated evidence rather than downloadable files. The runner
-> can reproduce the planned campaign without the optional historical comparison
-> CSV. No full campaign was rerun merely to prepare this code-only publication.
+> **Published notebook and final models:** the [executed notebook](../../biased_mf.ipynb)
+> embeds the recorded tables, all 73 learning traces and explanations, including
+> the combined comparison with Jiaxin. The two final checkpoints are published
+> under `task2/saved_models/`. Separate CSV/image/log files and intermediate
+> checkpoints remain local; paths to them below identify local/generated evidence.
+> Rerunning the notebook needs no external result CSVs or images and does not
+> train. No full campaign was rerun for publication.
 
 > **Consolidated official workflow.** The scientific results below are unchanged
 > from the completed 73-fit campaign. Operational paths now use
@@ -49,7 +50,7 @@ Three-seed validation MSE, **mean ± sample standard deviation**:
 - DAVIS: **0.258847 ± 0.002471**.
 - KIBA: **0.189855 ± 0.001323**.
 
-Both final checkpoints are stored under `../../saved_models/`,
+Both final checkpoints are published under [task2/saved_models/](../../saved_models/),
 and reloads reproduce the saved training and validation predictions exactly.
 These are validation-selected results, **not final test performance**.
 
@@ -630,8 +631,8 @@ that is why budget extensions replay from the seed.
 
 Selected checkpoint locations:
 
-- `../../saved_models/davis_biased_mf.npz`
-- `../../saved_models/kiba_biased_mf.npz`
+- [DAVIS Biased MF checkpoint](../../saved_models/davis_biased_mf.npz)
+- [KIBA Biased MF checkpoint](../../saved_models/kiba_biased_mf.npz)
 
 They additionally store the fixed-seed handoff policy, robustness seeds and mean/
 SD validation MSE. Each was reloaded and checked against the exact seed-42
@@ -682,16 +683,18 @@ labels this as consolidated evidence, not a new training run.
 | `figures/` | Capacity plots, heatmaps, regularization/rate curves and seed-variation plots |
 | `../../saved_models/` | Official final DAVIS and KIBA MF checkpoints |
 
-The official `../../biased_mf.ipynb` reads these saved
-results and figures; it has no training cell. Obsolete MF notebooks/runners and
+The official [notebook](../../biased_mf.ipynb) embeds the full-precision recorded
+tables/histories in its JSON metadata, stores displayed results in executed
+outputs and reconstructs plots in memory. Its last section independently checks
+published checkpoints on train/validation data. It needs no external campaign
+CSV or image, and has no training cell. Obsolete MF notebooks/runners and
 large duplicated outputs are preserved in the local-only archive rather than
 kept as competing active workflows.
 
 ### Commands
 
-From the repository root in WSL, run the software tests. The final command below
-additionally requires the retained local model/result artifacts, which are not
-part of the code-only GitHub package:
+From the repository root in WSL, run software tests and open the published
+notebook to inspect tables, plots and selected-model verification:
 
 ```bash
 source .venv/bin/activate
@@ -701,7 +704,7 @@ export MPLCONFIGDIR=/tmp/opencode/matplotlib
 mkdir -p /tmp/opencode
 
 python -B -m unittest discover -s task2/tests -p 'test_biased_mf.py' -v
-python -B -m task2.run_biased_mf --stage verify
+jupyter notebook task2/biased_mf.ipynb
 ```
 
 For a deliberate full reproduction, use a fresh directory:
@@ -714,7 +717,7 @@ done
 ```
 
 These latter commands **train models** and were not run for consolidation.
-They also work from a code-only checkout: the historical comparison CSV is
+They also work from a fresh checkout: the historical comparison CSV is
 optional, and unavailable historical comparisons are explicitly marked as such.
 `prepare` refuses an existing directory; stage artifacts are write-once.
 The retained local compact evidence cannot be resumed as if it still contained all
@@ -724,8 +727,7 @@ There is no `--stage test`, F=256 option or automatic larger grid.
 
 For inspection only:
 
-The notebook command requires the local reporting notebook, which is not
-included in this push:
+The published notebook works without the local result CSV/PNG files:
 
 ```bash
 jupyter notebook task2/biased_mf.ipynb
@@ -733,8 +735,8 @@ jupyter notebook task2/biased_mf.ipynb
 
 Load a selected checkpoint for ID-only validation predictions:
 
-This example requires the original local checkpoint. After a fresh reproduction,
-substitute its output directory's `checkpoints/` path.
+This example uses the published checkpoint. After a deliberate reproduction,
+substitute its output directory's `checkpoints/` path to inspect that new run.
 
 ```python
 from pathlib import Path
@@ -752,6 +754,12 @@ no new dependencies were installed. Repeated pandas warnings about the existing
 `float_precision="round_trip"` option were suppressed by a message-specific
 warning filter during subsequent commands. Numerical failures were not suppressed;
 the model's NaN/Inf guards and exceptions remained active. None occurred.
+
+The separate CLI `--stage verify` audits the full external aggregate bundle and
+still requires its local CSVs/manifests; use the notebook for the published
+selected-model check. The notebook's frozen metadata includes those tables and
+source hashes for inspection, but does not pretend that rerendering them is a
+new experiment. No intermediate-model or prediction-array archive is uploaded.
 
 ## 11. Limitations and remaining work
 

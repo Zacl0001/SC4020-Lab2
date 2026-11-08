@@ -1,48 +1,256 @@
-# SC4020 Project 2 — Biased Matrix Factorization
+# SC4020 Project 2 — Task 2: Drug–Target Affinity Prediction
 
-> **Code-only GitHub package:** this branch adds the model, runner, tests,
-> README, scientific report, protocol and `.gitignore`. Trained checkpoints,
-> notebook, CSVs, figures, logs and provenance archives remain local and are
-> **not included in this push**. Paths to those artifacts below describe the
-> retained local experiment or outputs of a deliberate reproduction; they are
-> not download links. The numeric findings are preserved in this README/report.
-> Historical comparison CSVs are optional, so a fresh checkout can reproduce
-> the campaign using the existing tracked train/validation splits.
+Task 2 compares four collaborative-filtering models on the same DAVIS and KIBA
+splits. **Jiaxin implemented Global Mean, Protein-Based CF and Drug-Based CF;
+WeiW0917 implemented Biased Matrix Factorization (Biased MF).** This README
+summarizes their recorded validation results together, explains the repository
+layout, and provides the detailed mathematics and experimental guide for MF.
 
-This directory contains the **official consolidated Biased MF implementation and completed scientific campaign** for Task 2. The research question is:
+**Start here:** [all-model validation comparison](#task-2-models-and-validation-results)
+· [where results and saved models are stored](#where-results-and-saved-models-are-stored)
+· [Biased MF mathematics](#prediction-equation-and-matrix-dimensions)
+· [commands](#wsl-commands).
+
+> **What is on GitHub?** All four models now have saved checkpoints, and the
+> [Biased MF reporting notebook](biased_mf.ipynb) includes its result tables,
+> learning curves and explanations alongside the combined comparison with Jiaxin.
+> The notebook embeds its recorded data and verifies the two published MF models;
+> it does not depend on untracked CSVs or images and never retrains automatically.
+> Separate CSV/plot files, logs, backups and intermediate models remain local.
+> Historical comparison CSVs are optional for deliberate campaign reproduction.
+
+The completed Biased MF campaign addresses:
 
 > How do latent-factor dimension and L2 regularization influence prediction accuracy, overfitting and generalization on DAVIS and KIBA?
 
 The campaign comprises **73 physical fits**, including capacity and F–lambda studies, learning-rate refinement, three-seed assessment and three justified epoch-extension reruns. It replaces the earlier standalone baseline/grid/sweep workflow. The core mathematical implementation and shared evaluation definitions are unchanged.
 
-**Both datasets selected F=128, lambda=1, learning rate=0.001, batch size=2048.** Configuration selection uses three-seed mean validation MSE; the selected local checkpoint always uses **seed 42**, never the luckiest seed.
+**Both datasets selected F=128, lambda=1, learning rate=0.001, batch size=2048.** Configuration selection uses three-seed mean validation MSE; the published checkpoint always uses **seed 42**, never the luckiest seed.
 
-| Published model | Training MSE | Validation MSE | CI | Hit@1 | Hit@5 | Best / stop epoch |
+| Selected Biased MF model | Training MSE | Validation MSE | CI | Hit@1 | Hit@5 | Best / stop epoch |
 |---|---:|---:|---:|---:|---:|---|
 | DAVIS | 0.0262192794 | **0.2598417435** | 0.8731753721 | 0.3382352941 | 0.7205882353 | 74 / 84 |
 | KIBA | 0.0232474522 | **0.1887607637** | 0.8480527495 | 0.6903914591 | 0.9522114896 | 34 / 44 |
 
-These are **validation results, not final test performance**. Full-precision values remain in `results/biased_mf/final_selection.csv`. Read the [scientific report](results/biased_mf/REPORT.md), [protocol](results/biased_mf/PROTOCOL.md), or `biased_mf.ipynb` for the complete evidence.
+These are **validation results, not final test performance**. Full-precision recorded tables are embedded in the [executed notebook](biased_mf.ipynb) and retained locally as `results/biased_mf/final_selection.csv`. Read the [scientific report](results/biased_mf/REPORT.md) and [protocol](results/biased_mf/PROTOCOL.md) for the complete research narrative.
 
 Numbers labeled **illustrative** below are teaching examples, not additional experiments. All file links are relative to `task2/`; terminal commands start from the repository root.
 
 ## Contents
 
-1. [Objective and scope](#objective-and-scope)
-2. [Datasets, preparation and splits](#datasets-preparation-and-splits)
-3. [Prediction equation and matrix dimensions](#prediction-equation-and-matrix-dimensions)
-4. [Squared error, objective and regularization](#squared-error-objective-and-regularization)
-5. [Gradients and Adam](#gradients-and-adam)
-6. [Training and early stopping](#training-and-early-stopping)
-7. [Scientific experimental campaign](#scientific-experimental-campaign)
-8. [Evaluation metrics and candidate counts](#evaluation-metrics-and-candidate-counts)
-9. [Final selection and interpretation](#final-selection-and-interpretation)
-10. [Code and artifact guide](#code-and-artifact-guide)
-11. [Correctness tests and verification](#correctness-tests-and-verification)
-12. [WSL commands](#wsl-commands)
-13. [Consolidation, provenance and exclusions](#consolidation-provenance-and-exclusions)
-14. [Limitations and remaining work](#limitations-and-remaining-work)
-15. [Glossary and references](#glossary-and-references)
+1. [Task 2 models and validation results](#task-2-models-and-validation-results)
+2. [Where results and saved models are stored](#where-results-and-saved-models-are-stored)
+3. [Objective and scope](#objective-and-scope)
+4. [Datasets, preparation and splits](#datasets-preparation-and-splits)
+5. [Prediction equation and matrix dimensions](#prediction-equation-and-matrix-dimensions)
+6. [Squared error, objective and regularization](#squared-error-objective-and-regularization)
+7. [Gradients and Adam](#gradients-and-adam)
+8. [Training and early stopping](#training-and-early-stopping)
+9. [Scientific experimental campaign](#scientific-experimental-campaign)
+10. [Evaluation metrics and candidate counts](#evaluation-metrics-and-candidate-counts)
+11. [Final selection and interpretation](#final-selection-and-interpretation)
+12. [Code and artifact guide](#code-and-artifact-guide)
+13. [Correctness tests and verification](#correctness-tests-and-verification)
+14. [WSL commands](#wsl-commands)
+15. [Consolidation, provenance and exclusions](#consolidation-provenance-and-exclusions)
+16. [Limitations and remaining work](#limitations-and-remaining-work)
+17. [Glossary and references](#glossary-and-references)
+
+## Task 2 models and validation results
+
+### Implementations and recorded configurations
+
+| Model | Contributor | Experiment/results source | Recorded DAVIS configuration | Recorded KIBA configuration |
+|---|---|---|---|---|
+| Global Mean | Jiaxin | [global_mean.ipynb](global_mean.ipynb) | Training mean 5.39147631 | Training mean 11.72100643 |
+| Protein-Based CF (KNN) | Jiaxin | [protein_cf.ipynb](protein_cf.ipynb), [implementation](utils/protein_cf.py) | K=10, minimum common observations=2 | K=5, minimum common observations=2 |
+| Drug-Based CF (KNN) | Jiaxin | [drug_cf.ipynb](drug_cf.ipynb), [implementation](utils/drug_cf.py) | K=5, minimum common observations=2 | K=10, minimum common observations=2 |
+| Biased MF | WeiW0917 | [scientific report](results/biased_mf/REPORT.md), [runner](run_biased_mf.py) | F=128, lambda=1, alpha=.001, seed=42 | F=128, lambda=1, alpha=.001, seed=42 |
+
+Both KNN models use the recorded similarity shrinkage setting of 10.0. Biased MF
+uses batch size 2,048 and early-stopping patience 10. Its F/lambda/alpha choice
+was assessed across three seeds, but the checkpoint compared below is always
+seed 42; the table does not substitute the best individual seed.
+
+### How Jiaxin's models work
+
+#### Global Mean: one training baseline for every query
+
+The Global Mean notebook calculates the average of all observed training scores:
+
+$$\mu=\frac{1}{N}\sum_{(i,j)\in\Omega_{\mathrm{train}}}y_{ij},\qquad\hat y_{ij}=\mu.$$
+
+Every drug–target pair receives the same prediction. No validation label is needed
+to predict, and there are no personalized parameters or neighbors. This simple
+baseline asks whether more sophisticated collaborative filtering adds value over
+always predicting an average. Its constant predictions yield CI=0.5 when actual
+scores differ; Hit@K reflects target-ID tie-breaking and candidate counts. The
+JSON checkpoints preserve the training mean and score-scale metadata.
+
+#### Protein-Based CF: borrow evidence from similar targets
+
+Rows of the affinity table are drugs and columns are proteins. Jiaxin calculates
+Pearson correlations between protein columns using only drugs observed for both
+proteins. Undefined correlations and negative correlations contribute no positive
+similarity. With n shared drugs, the retained correlation is shrunk by n/(n+10),
+so similarities based on little overlap receive less weight. Self-similarity is
+zero; eligible neighbors also meet the selected minimum-common count.
+
+For a query drug i and target j, select up to K positively similar targets that
+have an observed training affinity for drug i. If $m_j$ is target j's training
+mean and $s_{jt}$ its similarity to neighbor t, prediction is:
+
+$$\hat y_{ij}=m_j+
+\frac{\sum_{t\in\mathcal N_j(i)}s_{jt}(y_{it}-m_t)}{\sum_{t\in\mathcal N_j(i)}s_{jt}}.$$
+
+The adjustment transfers the query drug's above/below-average behavior on related
+targets. **Illustratively**, target mean 6, neighbor mean 5 and observed query-drug
+score 7 give prediction 6+(7−5)=8 for a single positive neighbor. These are invented
+numbers, not a dataset observation.
+
+With no usable neighbors, a known target falls back to its training mean; an
+unknown target uses the global mean. Similarity is derived from **training affinity
+patterns**, not amino-acid alignment or biological sequence features.
+
+#### Drug-Based CF: borrow evidence from similar drugs
+
+Drug CF exchanges the two entity roles and reuses the same implementation.
+Drug similarities are Pearson correlations across jointly observed training
+proteins, with the same nonnegative-similarity and overlap-shrinkage rules.
+For a query drug i and target j, eligible neighbors are similar drugs with an
+observed training score on target j. With drug training means $d_i,d_u$:
+
+$$\hat y_{ij}=d_i+
+\frac{\sum_{u\in\mathcal N_i(j)}s_{iu}(y_{uj}-d_u)}{\sum_{u\in\mathcal N_i(j)}s_{iu}}.$$
+
+If no neighbors are usable, a known drug falls back to its training mean; an
+unknown drug uses the global mean. SMILES strings identify drugs; chemical
+fingerprints are not computed. Exchanging roles for code reuse is different from
+MF, which learns drug and protein factors jointly without transposing datasets.
+
+Both KNN notebooks tune **K={5,10,20,30}** and **minimum common observations={2,5,10}**
+using validation MSE, while shrinkage stays at 10. Means and similarities are
+calculated from training; there is no gradient optimizer or epoch-based training
+in these KNN models. Their `.npz` checkpoints preserve the training matrix, ID
+arrays, means, similarities, overlap counts and selected settings. These method
+descriptions follow Jiaxin's existing code; her implementations were not changed.
+
+### DAVIS comparison
+
+Lower MSE is better; higher CI and Hit@K are better. **Validation MSE is the
+primary selection criterion.** Training MSE is included as an in-sample diagnostic,
+not a model-selection score. Bold marks the best recorded validation metric in
+each dataset's table.
+
+| Model | Training MSE | Validation MSE | Validation CI | Validation Hit@1 | Validation Hit@5 |
+|---|---:|---:|---:|---:|---:|
+| Global Mean — Jiaxin | 0.649827 | 0.675120 | 0.500000 | 0.102941 | 0.132353 |
+| Protein CF — Jiaxin | 0.143402 | 0.282732 | 0.866063 | 0.323529 | 0.647059 |
+| Drug CF — Jiaxin | 0.288737 | 0.322968 | 0.856107 | 0.308824 | 0.676471 |
+| Biased MF — WeiW0917 | 0.026219 | **0.259842** | **0.873175** | **0.338235** | **0.720588** |
+
+### KIBA comparison
+
+| Model | Training MSE | Validation MSE | Validation CI | Validation Hit@1 | Validation Hit@5 |
+|---|---:|---:|---:|---:|---:|
+| Global Mean — Jiaxin | 0.693327 | 0.687805 | 0.500000 | 0.375699 | 0.717844 |
+| Protein CF — Jiaxin | 0.222928 | 0.239772 | 0.826530 | 0.620234 | 0.921708 |
+| Drug CF — Jiaxin | 0.117061 | 0.209019 | **0.848886** | 0.665989 | 0.934926 |
+| Biased MF — WeiW0917 | 0.023247 | **0.188761** | 0.848053 | **0.690391** | **0.952211** |
+
+### What the comparison shows
+
+- **DAVIS:** Protein CF is the strongest KNN baseline by validation MSE.
+  Biased MF has approximately **8.10% lower MSE** than Protein CF and the highest
+  recorded CI, Hit@1 and Hit@5 among these four models.
+- **KIBA:** Drug CF is the strongest KNN baseline by validation MSE.
+  Biased MF has approximately **9.69% lower MSE**, with higher Hit@1/Hit@5,
+  but **Drug CF has slightly higher global CI** (0.848886 versus 0.848053).
+  Biased MF therefore does not dominate every metric.
+- Global Mean's tied predictions give CI=0.5; its Hit@K depends on deterministic
+  target-ID tie-breaking and the candidate sets rather than personalized ranking.
+- The MF training errors are much lower than the KNN training errors, but that
+  alone is not evidence of better generalization. The validation measurements,
+  learning curves and seed assessment are the relevant evidence.
+- These models use the same fixed pair splits and shared evaluation definitions.
+  CI is global, not per-drug, and KIBA's many small candidate sets make overall
+  Hit@5 easier. The [candidate-count explanation](#evaluation-metrics-and-candidate-counts)
+  is essential when interpreting the ranking scores.
+
+**Sources and precision:** Jiaxin's values are the saved evaluation-table outputs
+in her three notebooks on `main` at
+[commit 21ade81](https://github.com/Zacl0001/SC4020-Lab2/commit/21ade81b04978902dc081302c573338b6bec1209).
+KNN settings were cross-checked against her saved checkpoint metadata. MF values
+come from the completed campaign's local `results/biased_mf/final_selection.csv`.
+All values above are displayed to six decimals; the notebook values are already
+rounded, so the percentage reductions are approximate. Jiaxin's notebooks/models
+were not rerun to assemble this comparison. The MF reporting notebook rechecks
+its saved checkpoints without fitting; it does not repeat the experiments. No
+final-test dataset was read. This is recorded single-split validation evidence,
+not a statistical significance claim or a final-test result. The team still needs
+to agree on the frozen final models.
+
+## Where results and saved models are stored
+
+### Why does Biased MF have a `results/` directory?
+
+`results/` stores **experimental evidence**: reports, configurations, metric
+tables and learning curves. It does not define a different model interface.
+
+- **Jiaxin's workflow:** result tables and explanations are embedded in the
+  executed `global_mean.ipynb`, `protein_cf.ipynb` and `drug_cf.ipynb` notebooks.
+  Their trained states are in the shared `saved_models/` directory. She does not
+  need a separate `results/` folder for those results to exist.
+- **Biased MF's workflow:** the multi-stage 73-fit campaign uses a Python runner,
+  with a separate report/protocol and local CSVs/figures. The published reporting
+  notebook now embeds the recorded tables and raw learning-curve values and stores
+  the displayed results and explanations in its executed cells. It reconstructs
+  plots from that embedded snapshot, not from untracked image or CSV files.
+
+On GitHub, **`results/biased_mf/` currently contains only `REPORT.md` and
+`PROTOCOL.md`**. The remaining CSVs, plots, logs and verification records are
+local/generated artifacts excluded from GitHub as separate files. Their relevant
+tables and learning curves are also embedded in the published notebook. Thus the
+directory visible on GitHub is a documentation folder, not the complete 73-run
+checkpoint archive; users can inspect the results directly in the notebook.
+
+### Do we have saved models?
+
+**Yes. `task2/saved_models/` exists both locally and on GitHub.** The difference
+is which model files were committed:
+
+| Model family | Local checkpoint filenames under `saved_models/` | Available locally | Tracked on GitHub |
+|---|---|---|---|
+| Global Mean — Jiaxin | `davis_global_mean.json`, `kiba_global_mean.json` | Yes | Yes |
+| Protein CF — Jiaxin | `davis_protein_cf.npz`, `kiba_protein_cf.npz` | Yes | Yes |
+| Drug CF — Jiaxin | `davis_drug_cf.npz`, `kiba_drug_cf.npz` | Yes | Yes |
+| Biased MF — WeiW0917 | `davis_biased_mf.npz`, `kiba_biased_mf.npz` | **Yes** | **Yes — included with the reporting notebook** |
+
+The two local MF files are the final **F=128, lambda=1, alpha=.001, seed=42**
+models, not obsolete F64 checkpoints. Their sizes are 699,420 bytes (DAVIS) and
+2,485,559 bytes (KIBA), both well below GitHub's file-size limit. They were initially
+kept local for the earlier code-only publication and are now published unchanged,
+with the same full-precision parameters and prediction hashes:
+[DAVIS checkpoint](saved_models/davis_biased_mf.npz) and
+[KIBA checkpoint](saved_models/kiba_biased_mf.npz).
+
+### What works after cloning?
+
+| Action | Fresh GitHub checkout | Existing local WSL workspace |
+|---|---|---|
+| Read this README and the MF report/protocol | Available | Available |
+| Read Jiaxin's notebooks and load her saved models | Available after installing dependencies | Available |
+| Run the 18 MF software tests | Available after installing dependencies | Available |
+| Load the final MF checkpoints immediately | Available in `saved_models/` after installing dependencies | Available |
+| Run the notebook's selected-model verification | Available; uses embedded tables, published models and shared train/validation splits | Available |
+| Run MF CLI `--stage verify` for the full external evidence bundle | Requires the separate local aggregate files/manifests | Available |
+| Open/reexecute `biased_mf.ipynb` with its recorded results | Available; no separate result CSVs or image files required | Available |
+| Reproduce the MF campaign into a fresh output directory | Available; historical comparison CSV is optional | Available, but unnecessary merely to inspect existing results |
+
+The [WSL commands](#wsl-commands) distinguish software tests, local-artifact
+inspection and deliberate training. A fresh reproduction saves selected models
+under its own output directory's `checkpoints/`; it does not silently replace
+the final local models in `saved_models/`.
 
 ## Objective and scope
 
@@ -60,7 +268,7 @@ Collaborative filtering uses patterns in the observed interaction table. Drugs p
 | [Drug CF](utils/drug_cf.py) | Use neighboring drugs by exchanging roles in the protein-CF implementation |
 | [Biased MF](utils/biased_mf.py) | Learn drug/target offsets and interacting latent vectors jointly from observed training pairs |
 
-Biased MF is a model-based alternative to neighbor lookup. It can share information across the table without selecting neighbors at inference time. It is not guaranteed to outperform KNN; that comparison remains a validation-model-selection task.
+Biased MF is a model-based alternative to neighbor lookup. It can share information across the table without selecting neighbors at inference time. The recorded comparison above favors MF by validation MSE on these splits, but superiority over KNN is not a mathematical guarantee or a final-test conclusion.
 
 **SMILES and amino-acid sequences are exact identifiers here.** They are not converted into fingerprints, molecular graphs, sequence alignments or pretrained embeddings. `predict_biased_mf(model, pairs)` reads only the two ID columns and returns a finite NumPy vector of shape `(len(pairs),)` in input row order. It ignores an `affinity` column even if one is present.
 
@@ -424,40 +632,58 @@ The final configuration is F=128, lambda=1, alpha=0.001, batch=2048, seed=42, pa
 | DAVIS | **4.3562% lower validation MSE** | **2.8421% lower** |
 | KIBA | **7.8456% lower validation MSE** | **5.2604% lower** |
 
-Training–validation gaps at the published epochs are **0.2336224641** (DAVIS) and **0.1655133115** (KIBA). Their size did not determine selection. Full historical comparison values are in `results/biased_mf/reference_comparison.csv`.
+Training–validation gaps at the selected epochs are **0.2336224641** (DAVIS) and **0.1655133115** (KIBA). Their size did not determine selection. Full historical MF comparison values are in `results/biased_mf/reference_comparison.csv`; the separate [all-model comparison](#task-2-models-and-validation-results) includes Jiaxin's baselines.
 
 The campaign improves MSE and scientific understanding, but not every metric. DAVIS Hit@1 is below the original F64/lambda=.01 reference, and Hit@5 is below the earlier F64/lambda=1 sweep winner. KIBA's candidate-set distribution also makes raw Hit@5 easier than DAVIS's. Interpret these trade-offs rather than claiming a universally superior model.
 
-The selected checkpoints are `saved_models/davis_biased_mf.npz` and `saved_models/kiba_biased_mf.npz`. They are the campaign F128 models, **not the obsolete F64/lambda=.01 checkpoints**. They were promoted byte-for-byte, preserving all full-precision values and original provenance metadata.
+The selected checkpoints are [saved_models/davis_biased_mf.npz](saved_models/davis_biased_mf.npz) and [saved_models/kiba_biased_mf.npz](saved_models/kiba_biased_mf.npz). They are the campaign F128 models, **not the obsolete F64/lambda=.01 checkpoints**. They were promoted and published byte-for-byte, preserving all full-precision values and original provenance metadata.
 
 ## Code and artifact guide
 
-The tree below describes the **complete local workspace after experimentation**.
-Only the three Python files, this README, `REPORT.md`, `PROTOCOL.md` and the
-repository `.gitignore` are part of this minimal addition to GitHub. Existing
-shared datasets/evaluation code are already tracked in the project.
+### Tracked Task 2 structure on GitHub
+
+This combines Jiaxin's existing files with the MF code, documentation, executed
+reporting notebook and two final checkpoints. The repository `.gitignore` is also
+tracked. All eight final model files are now in the shared `saved_models/` directory.
 
 ```text
 task2/
-├── utils/biased_mf.py          # unchanged model, gradients, Adam and serialization
-├── run_biased_mf.py            # official staged campaign + read-only verifier
-├── biased_mf.ipynb             # executed reporting notebook; no training cells
-├── tests/test_biased_mf.py     # original 18 correctness tests
+├── data/                     # existing shared cleaned data and fixed splits
+├── data_preparation.ipynb     # shared preparation and integrity checks
+├── global_mean.ipynb         # Jiaxin: implementation and recorded results
+├── protein_cf.ipynb          # Jiaxin: experiments and recorded results
+├── drug_cf.ipynb             # Jiaxin: experiments and recorded results
+├── utils/
+│   ├── evaluation.py         # shared unchanged metrics
+│   ├── protein_cf.py         # Jiaxin's protein-based CF
+│   ├── drug_cf.py            # Jiaxin's drug-based CF
+│   └── biased_mf.py          # MF prediction, gradients, Adam and serialization
+├── run_biased_mf.py          # official MF campaign + read-only verifier
+├── biased_mf.ipynb           # recorded tables/curves + published-model checks
+├── tests/test_biased_mf.py    # 18 MF correctness tests
 ├── README.md
-├── saved_models/{davis,kiba}_biased_mf.npz
+├── saved_models/
+│   ├── {davis,kiba}_global_mean.json
+│   ├── {davis,kiba}_protein_cf.npz
+│   ├── {davis,kiba}_drug_cf.npz
+│   └── {davis,kiba}_biased_mf.npz
 └── results/biased_mf/
-    ├── REPORT.md, PROTOCOL.md, STAGE2_INTERPRETATION.md
-    ├── stage*.csv, final_selection.csv, reference_comparison.csv
-    ├── all_physical_runs.csv, all_training_histories.csv
-    ├── candidate_counts.csv, candidate_summary.csv
-    ├── figures/
-    ├── manifest.json, verification.json, consolidation_checks.json
-    ├── RETENTION.md, LOCAL_REVIEW.md
-    └── provenance/
-        ├── original_manifest.json, original_sources.zip
-        ├── historical_results.csv
-        └── consolidation.json
+    ├── REPORT.md             # complete MF scientific findings
+    └── PROTOCOL.md           # experimental design and reproduction policy
 ```
+
+### Additional local MF artifacts
+
+The local workspace additionally retains separate CSVs/figures/logs/provenance
+under `results/biased_mf/` and the ignored original-evidence backup. Those external
+files are not implied to be present in a fresh clone. The published notebook
+embeds full-precision recorded tables and all 73 raw histories, so ordinary
+reporting and selected-model verification do not require those external files.
+
+Jiaxin's Global Mean functions are defined in her notebook; her Protein/Drug CF
+notebooks import their respective utility modules. All four models use the same
+`utils/evaluation.py`. Their different choices of notebook versus runner do not
+require changing the shared splits, metrics or checkpoint directory.
 
 ### `utils/biased_mf.py`
 
@@ -487,15 +713,32 @@ This is the only active experiment runner. It imports the model and shared metri
 - `stage_capacity`, `stage_interaction`, `stage_rates`, `stage_seeds`: the scientific stages, selection rules and figures.
 - `verify_all` (CLI `summarize`): validates full reproduction-run states and builds aggregate tables once.
 - `verify_published` (CLI `verify`): read-only verification of current source/data hashes, original lineage, all retained histories, seed summaries and the two selected checkpoints; **does not require the 73-run archive or fit any model**.
-- `historical_rows`: reads the compact 40-condition comparison table if available; otherwise returns an empty, correctly structured table. Fresh code-only runs fit the same planned grid without requiring any historical artifact. Missing comparisons are recorded as unavailable, not as successful checks. It never interprets the selected F128 models as historical F64 checkpoints.
+- `historical_rows`: reads the compact 40-condition comparison table if available; otherwise returns an empty, correctly structured table. Fresh runs fit the same planned grid without requiring any historical artifact. Missing comparisons are recorded as unavailable, not as successful checks. It never interprets the selected F128 models as historical F64 checkpoints.
 - `curve_plot`, `peer_evidence`, `sort_results`: visualization, descriptive diagnostics and deterministic campaign ordering.
 - `run_search(root, grid, ...)`, `select_best`, `_curve`: a small **explicit-grid programmatic compatibility API** used by the original synthetic integration test. There is no default old grid, obsolete baseline cache or CLI `baseline/search` workflow. Existing checkpoint/result paths are protected. It calls the same model and evaluation helpers, not a second optimizer.
 
 The active consolidated manifest records the refactored source hash. The archived original manifest/source bundle retains what actually produced the trained states; consolidation does not pretend that training ran under a source file created later.
 
-### `biased_mf.ipynb`
+### Published `biased_mf.ipynb`
 
-The reporting notebook reads consolidated CSVs and figures, displays each stage and its scientific interpretation, and shows final metrics/robustness. It contains **no fit/search calls** and no test-data loader. Its saved outputs are executed. Opening it does not launch the 73-fit campaign. Running its reporting cells only reads evidence; saving the notebook changes notebook outputs, as usual.
+The notebook includes combined Jiaxin/MF result tables, explanations of all four
+models, each campaign stage, parameter/epoch diagnostics, F–lambda heatmaps,
+learning-rate curves, seed variation and candidate-count analysis. Its executed
+outputs can be viewed on GitHub directly.
+
+The full-precision recorded data live in the notebook's JSON metadata under
+`biased_mf_evidence`: stage tables, 73 physical-run records, 3,275 epoch rows,
+source-file hashes and final checkpoint hashes. The setup cell reads that embedded
+snapshot from this notebook, and plotting cells regenerate figures in memory.
+No untracked CSV, PNG, manifest or local archive is required. Jiaxin's rows copy
+only recorded training/validation columns from commit `21ade81`, not test results.
+
+The final verification section loads the two published `.npz` files with
+`allow_pickle=False`, checks metadata/dimensions/source/data hashes and recomputes
+training/validation predictions and metrics. Exact prediction hashes must match
+the recorded selected states. It contains **no fit/search calls and no test-split
+loader**. Opening or executing it never launches the 73-fit campaign. Saving the
+notebook changes reporting outputs, not model parameters or datasets.
 
 ### Shared evaluation and test files
 
@@ -554,29 +797,31 @@ mkdir -p /tmp/opencode
 python -B -m unittest discover -s task2/tests -p 'test_biased_mf.py' -v
 ```
 
-The existing environment used Python 3.12.3, NumPy 2.5.4 and pandas 3.1.1. Matplotlib and Jupyter support figures/notebooks; pytest is unnecessary. The tests use `/tmp/opencode` as a temporary parent. `OPENBLAS_NUM_THREADS=1`, set before NumPy imports, matches the recorded runs. `PYTHONDONTWRITEBYTECODE=1` avoids new bytecode caches.
+The existing environment used Python 3.12.3, NumPy 2.5.4 and pandas 3.1.1. Matplotlib and Jupyter support the published reporting notebook; pytest is unnecessary. The tests use `/tmp/opencode` as a temporary parent. `OPENBLAS_NUM_THREADS=1`, set before NumPy imports, matches the recorded runs. `PYTHONDONTWRITEBYTECODE=1` avoids new bytecode caches.
 
 On a fresh machine without `.venv`, first create it with `python3 -m venv .venv`,
-activate it, and install `numpy`, `pandas` and `matplotlib` using pip. Jupyter is
-optional and needed only when the local reporting notebook is available. No
-environment or notebook is bundled in this code-only push.
+activate it, and install `numpy`, `pandas`, `matplotlib` and `jupyter` using pip.
+The virtual environment itself is not bundled. Jupyter is needed to execute the
+notebook, but its saved outputs are viewable on GitHub without running anything.
 
-If the original local artifacts are available, verify/read them with:
+View the published result tables and run its selected-checkpoint checks:
 
 ```bash
-python -B -m task2.run_biased_mf --stage verify
 jupyter notebook task2/biased_mf.ipynb
 ```
 
-These two commands require local artifacts absent from a fresh GitHub checkout.
-The verifier gives an actionable error when outputs are missing and never starts
-training automatically. For reproduced artifacts, pass their `--output-dir`.
+This notebook works after cloning; it embeds the campaign data and uses the
+published checkpoints plus existing tracked train/validation splits. It does not
+train. The separate CLI `python -B -m task2.run_biased_mf --stage verify` audits
+the full **external** aggregate-evidence bundle and still requires those local
+files. For a fresh reproduction, pass its `--output-dir` to that verifier. Missing
+external outputs give an error, not automatic training.
 
 The pandas environment emits a deprecation warning for the existing `float_precision="round_trip"` option. It remains supported and is not a training numerical failure. No new dependencies are required.
 
 ### Deliberate full reproduction — not needed to inspect results
 
-**These commands train models.** Use a new output directory; retained local evidence is read-only. Future full-run caches and checkpoints in the reproduction directory are ignored by Git. This is how a code-only checkout generates its own results; it is unnecessary when merely inspecting the numerical findings in the report.
+**These commands train models.** Use a new output directory; retained local evidence is read-only. Future full-run caches and checkpoints in the reproduction directory are ignored by Git. This reconstructs the full external run archive; it is unnecessary for reading the notebook, checking published predictions or inspecting the findings.
 
 ```bash
 OUT=task2/results/biased_mf_reproductions/run1
@@ -589,8 +834,8 @@ done
 
 ### Inspect metrics or predict without labels
 
-The following example assumes the original local artifacts are present. After a
-fresh reproduction, use its `final_selection.csv` and `checkpoints/` paths instead.
+The following example works with the published checkpoint and shared validation
+identifiers; it does not require any external result CSV.
 
 ```bash
 python - <<'PY'
@@ -599,7 +844,6 @@ import pandas as pd
 from task2.utils.biased_mf import PAIR_KEYS, load_biased_mf, predict_biased_mf
 
 root = Path('task2')
-print(pd.read_csv(root / 'results/biased_mf/final_selection.csv').to_string(index=False))
 model = load_biased_mf(root / 'saved_models/davis_biased_mf.npz')
 pairs = pd.read_csv(root / 'data/splits/davis_val.csv', usecols=PAIR_KEYS, nrows=3)
 print('F:', int(model['n_factors']), 'lambda:', float(model['regularization']))
@@ -612,7 +856,11 @@ Substitute `kiba` for the other model. The example uses only identifier columns 
 
 ## Consolidation, provenance and exclusions
 
-The complete local layout keeps one active runner and reporting notebook, the unchanged model/test code, numerical evidence and two final checkpoints. The minimal GitHub addition contains code and three Markdown documents only, plus `.gitignore`. The earlier baseline/grid/sweep runners and duplicate working outputs were retired after verification.
+The GitHub package contains one active runner, the unchanged model/test code,
+README/report/protocol, the executed self-contained reporting notebook and two
+final MF checkpoints. Separate CSVs/images/logs and intermediate states remain
+local. The earlier baseline/grid/sweep runners and duplicate working outputs were
+retired after verification; the complete original evidence remains backed up.
 
 Before replacement, all MF-owned original files were archived and every archive member hash-checked. A local-only backup is retained at:
 
@@ -622,9 +870,17 @@ Before replacement, all MF-owned original files were archived and every archive 
 
 It contains the original 73-run archive, obsolete checkpoints, notebooks, reports and runners. It is excluded from GitHub and exceeds the ordinary 100 MiB per-file upload limit. Keep it locally for review/recovery; it is not required for inference or compact verification.
 
-**Included in this push:** `.gitignore`, `utils/biased_mf.py`, `run_biased_mf.py`, `tests/test_biased_mf.py`, this README, `results/biased_mf/REPORT.md` and `results/biased_mf/PROTOCOL.md`.
+**Published MF files:** `.gitignore`, `utils/biased_mf.py`, `run_biased_mf.py`,
+`tests/test_biased_mf.py`, this README, `results/biased_mf/REPORT.md`,
+`results/biased_mf/PROTOCOL.md`, `biased_mf.ipynb`, and the two
+`saved_models/*_biased_mf.npz` files.
 
-**Not included in this push:** notebooks, all checkpoints, CSVs, figures, logs, provenance ZIP/JSON files, local review/retention documents, `.venv`, caches, backups and reproduction outputs. They remain local; exclusion from staging does not delete them. The final checkpoint sizes are 699,420 and 2,485,559 bytes, but they are excluded for the requested minimal scope, not because they exceed GitHub's limits. Shared datasets and teammate files are already tracked and are not changed by this push.
+**Kept local as separate files:** MF CSVs/images/logs, provenance ZIP/JSON files,
+local review/retention documents, `.venv`, caches, backups, intermediate models
+and reproduction outputs. The notebook carries the relevant recorded tables,
+histories and rendered plots without adding those files individually. Jiaxin's
+already-tracked notebooks and six checkpoints, shared data and shared metrics
+remain unchanged. No 73-model archive is included in the upload.
 
 The original source/data hashes and historical model metadata were not rewritten to pretend refactored code produced past fits. Instead:
 
@@ -647,7 +903,7 @@ Historical source names inside provenance and checkpoint metadata are intentiona
 
 Remaining Task 2 steps:
 
-1. Compare validation results with Jiaxin's Global Mean, Protein CF and Drug CF.
+1. Review the recorded all-model validation comparison above with Jiaxin, including the KIBA CI trade-off, candidate counts and model-selection protocol.
 2. Agree on frozen final models using validation evidence.
 3. Perform the planned final evaluation without test-driven tuning.
 4. Load saved models for three ligand case studies per dataset: recommendations, true/predicted scores, MSE/CI/Hit@K and rank of the true-best target.

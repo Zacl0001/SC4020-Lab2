@@ -1,10 +1,11 @@
 # Prospective campaign protocol
 
-**Code-only GitHub scope:** the runner, model, tests, README, report and this
-protocol are included; historical CSVs, notebooks, checkpoints and generated
-outputs are not. Historical comparisons are optional. A fresh reproduction
-fits the same planned grid and marks missing historical comparisons unavailable.
-The counts/results described below refer to the already-completed local campaign.
+**GitHub scope:** the runner, core model, tests, README/report/protocol, executed
+reporting notebook and two final MF checkpoints are included. The notebook embeds
+recorded tables and learning traces and verifies selected states without fitting.
+Separate historical CSVs, PNGs, logs and intermediate checkpoints remain local.
+Historical comparison CSVs are optional for a fresh full reproduction. The
+counts/results below refer to the already-completed campaign, not notebook reruns.
 
 This is the retained scientific design of the completed 73-fit campaign.
 Consolidation changes operational names, not the numerical rules below. The
@@ -69,8 +70,16 @@ the already-verified final models; it did not repeat the campaign.
 
 Read-only verification from the repository root:
 
-This requires existing local artifacts; it is not available immediately after a
-code-only clone. Reproduce into a new directory first, or supply existing outputs.
+This CLI command requires the separate local aggregate CSVs/manifests. For
+verification using only published artifacts, open the notebook instead:
+
+```bash
+.venv/bin/jupyter notebook task2/biased_mf.ipynb
+```
+
+The notebook loads the two published checkpoints and the shared training/validation
+splits, and compares predictions/metrics with its embedded full-precision evidence.
+It has no training cells and does not read test data.
 
 ```bash
 OPENBLAS_NUM_THREADS=1 .venv/bin/python -B -m task2.run_biased_mf --stage verify

@@ -8,8 +8,9 @@ To deliberately reproduce experiments, use a NEW output directory and stages:
 For example: --output-dir task2/results/biased_mf_reproductions/run1
 
 The mathematical model and shared metrics are imported unchanged. Each fresh
-physical fit has its own immutable directory. The code-only GitHub package does
-not include model/result artifacts; historical reference CSVs are optional.
+physical fit has its own immutable directory. GitHub includes the final models
+and a self-contained reporting notebook; separate historical/result CSVs remain
+optional local artifacts. The notebook verifies published models without them.
 """
 
 import argparse
@@ -230,7 +231,7 @@ def current_fingerprints():
 
 
 def historical_rows():
-    """Optional local comparisons; a code-only checkout needs no result CSVs."""
+    """Optional local comparisons; a fresh checkout needs no historical CSVs."""
     path = EVIDENCE / "provenance/historical_results.csv"
     if path.is_file():
         return read_csv(path)
@@ -284,7 +285,7 @@ Re-run historical configurations needed for this campaign, explicitly labeled.
 Compare historical metrics as reproduction checks; the original campaign's
 parameter-state reproduction evidence is retained in the compact audit.
 Existing lambda=100 results are historical supplementary evidence only.
-In a code-only checkout the historical comparison CSV is absent: all required
+When the historical comparison CSV is absent, all required
 conditions are fitted normally, and historical comparison checks are marked
 unavailable rather than fabricated. This does not change the experiment grid.
 Within this campaign, require matching config, source/data hashes, mappings,
@@ -294,7 +295,7 @@ Budget before extensions: 50 core fits (20 capacity + 30 interaction additions),
 12 additional rate fits, 8 additional seed fits = 70 physical fits. One existing
 DAVIS F=8, alpha=.005, lambda=.01 run is the runner smoke check and is counted
 in the 20 capacity fits. The original recorded campaign had 14 historical
-repeats + 36 new core configurations; a fresh code-only run has no such references.
+repeats + 36 new core configurations; a fresh run may have no such references.
 Additional extension fits are conditional and retained separately. Tests use
 synthetic data and are not counted as scientific campaign fits.
 
@@ -814,8 +815,9 @@ def main():
     args = parser.parse_args()
     OUT = args.output_dir.resolve()
     if args.stage != "prepare" and not (OUT / "manifest.json").is_file():
-        parser.error("Saved experiment artifacts are not included in the code-only checkout. "
-                     "Use --stage prepare with a fresh --output-dir to reproduce them, "
+        parser.error("The separate full-evidence CSV/manifest bundle is not available here. "
+                     "Use task2/biased_mf.ipynb to inspect recorded tables and verify the published models. "
+                     "For deliberate full reproduction use --stage prepare with a fresh --output-dir, "
                      "or point --output-dir to an existing completed run. Verification never trains a model.")
     if args.stage == "verify":
         verify_published(OUT)
