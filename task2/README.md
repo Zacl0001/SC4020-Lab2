@@ -16,7 +16,8 @@ layout, and provides the detailed mathematics and experimental guide for MF.
 > learning curves and explanations alongside the combined comparison with Jiaxin.
 > The notebook embeds its recorded data and verifies the two published MF models;
 > it does not depend on untracked CSVs or images and never retrains automatically.
-> Separate CSV/plot files, logs, backups and intermediate models remain local.
+> The four Stage 1 capacity/delta PNGs are also published. Other separate CSV/plot
+> files, logs, backups and intermediate models remain local.
 > Historical comparison CSVs are optional for deliberate campaign reproduction.
 
 The completed Biased MF campaign addresses:
@@ -207,9 +208,9 @@ tables and learning curves. It does not define a different model interface.
   the displayed results and explanations in its executed cells. It reconstructs
   plots from that embedded snapshot, not from untracked image or CSV files.
 
-On GitHub, **`results/biased_mf/` currently contains only `REPORT.md` and
-`PROTOCOL.md`**. The remaining CSVs, plots, logs and verification records are
-local/generated artifacts excluded from GitHub as separate files. Their relevant
+On GitHub, **`results/biased_mf/` contains `REPORT.md`, `PROTOCOL.md` and the four
+Stage 1 capacity/delta PNGs in `figures/`**. The remaining CSVs, plots, logs and
+verification records are local/generated artifacts excluded as separate files. Their relevant
 tables and learning curves are also embedded in the published notebook. Thus the
 directory visible on GitHub is a documentation folder, not the complete 73-run
 checkpoint archive; users can inspect the results directly in the notebook.
@@ -757,7 +758,8 @@ task2/
 │   └── {davis,kiba}_biased_mf.npz
 └── results/biased_mf/
     ├── REPORT.md             # complete MF scientific findings
-    └── PROTOCOL.md           # experimental design and reproduction policy
+    ├── PROTOCOL.md           # experimental design and reproduction policy
+    └── figures/              # DAVIS/KIBA capacity and delta-MSE PNGs
 ```
 
 ### Additional local MF artifacts
@@ -946,8 +948,8 @@ Substitute `kiba` for the other model. The example uses only identifier columns 
 
 The GitHub package contains one active runner, the unchanged model/test code,
 README/report/protocol, the executed self-contained reporting notebook and two
-final MF checkpoints. Separate CSVs/images/logs and intermediate states remain
-local. The earlier baseline/grid/sweep runners and duplicate working outputs were
+final MF checkpoints, plus four Stage 1 capacity/delta PNGs. Other separate
+CSVs/images/logs and intermediate states remain local. The earlier baseline/grid/sweep runners and duplicate working outputs were
 retired after verification; the complete original evidence remains backed up.
 
 Before replacement, all MF-owned original files were archived and every archive member hash-checked. A local-only backup is retained at:
@@ -961,9 +963,10 @@ It contains the original 73-run archive, obsolete checkpoints, notebooks, report
 **Published MF files:** `.gitignore`, `utils/biased_mf.py`, `run_biased_mf.py`,
 `tests/test_biased_mf.py`, this README, `results/biased_mf/REPORT.md`,
 `results/biased_mf/PROTOCOL.md`, `biased_mf.ipynb`, and the two
-`saved_models/*_biased_mf.npz` files.
+`saved_models/*_biased_mf.npz` files. The four `results/biased_mf/figures/`
+`{davis,kiba}_capacity.png` and `{davis,kiba}_capacity_delta.png` files are also published.
 
-**Kept local as separate files:** MF CSVs/images/logs, provenance ZIP/JSON files,
+**Kept local as separate files:** MF CSVs/logs and other images, provenance ZIP/JSON files,
 local review/retention documents, `.venv`, caches, backups, intermediate models
 and reproduction outputs. The notebook carries the relevant recorded tables,
 histories and rendered plots without adding those files individually. Jiaxin's

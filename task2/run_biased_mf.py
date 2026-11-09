@@ -3,6 +3,9 @@
 With local experiment artifacts available, verify without fitting or writing:
     python -m task2.run_biased_mf --stage verify
 
+Refresh only capacity figures from existing scores (no training):
+    python -m task2.run_biased_mf --stage capacity-plots
+
 To deliberately reproduce experiments, use a NEW output directory and stages:
     prepare, smoke, tests, capacity, interaction, rates, seeds, summarize, verify
 For example: --output-dir task2/results/biased_mf_reproductions/run1
@@ -525,6 +528,98 @@ def curve_plot(rows, filename, title):
     plt.close(fig)
 
 
+def capacity_figures(frame, dataset):
+    """Plot saved Stage 1 scores and paired lambda differences without fitting.
+
+    Color denotes the score split; marker, line style and drawing order denote
+    lambda. Values and factor coordinates are never offset to separate curves.
+    Return the absolute-MSE figure, delta-MSE figure and exact difference table.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import ScalarFormatter
+
+    subset = successful(frame.loc[frame.dataset.eq(dataset)
+                                  & frame.regularization.isin([0., .01])])
+    if subset.empty:
+        raise ValueError(f"No successful Stage 1 observations for {dataset}")
+    factors = np.sort(subset.n_factors.unique())
+    paired = {}
+    for metric in ("train_mse", "val_mse"):
+        # Pivot rejects duplicate configurations instead of averaging them.
+        values = subset.pivot(index="n_factors", columns="regularization", values=metric)
+        values = values.reindex(index=factors, columns=[0., .01])
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError("Both lambda=0 and lambda=0.01 need finite scores at every F")
+        paired[metric] = values
+    delta = pd.DataFrame({
+        "dataset": dataset, "n_factors": factors,
+        "train_delta_mse": (paired["train_mse"][.01] - paired["train_mse"][0.]).to_numpy(),
+        "val_delta_mse": (paired["val_mse"][.01] - paired["val_mse"][0.]).to_numpy(),
+    })
+    metrics = (("train_mse", "Training", "#0072B2"),
+               ("val_mse", "Validation", "#D55E00"))
+    caption = (
+        r"Weak L2: $L=(\mathrm{SSE}+\lambda\|\theta\|^2)/(2N)$; penalty gradient = $(\lambda/N)\theta$."
+        "\nHere lambda=0.01 produces very small observed MSE differences; each point uses its own best validation epoch."
+    )
+
+    fig, ax = plt.subplots(figsize=(9, 5.8))
+    # Broad solid baselines and large open circles go underneath the thinner
+    # dashed curves and small crosses, exposing both at nearly equal positions.
+    for penalty in (0., .01):
+        style = (dict(linestyle="-", linewidth=3., marker="o", markersize=11,
+                      markerfacecolor="none", markeredgewidth=1.8, alpha=.65, zorder=2)
+                 if penalty == 0. else
+                 dict(linestyle=(0, (5, 3)), linewidth=1.5, marker="x", markersize=6,
+                      markeredgewidth=1.8, alpha=1., zorder=3))
+        for metric, label, color in metrics:
+            ax.plot(factors, paired[metric][penalty], color=color,
+                    label=rf"{label}, $\lambda={penalty:g}$", **style)
+    ax.set(xlabel="Latent-factor dimension F", ylabel="MSE at best validation epoch",
+           title=f"{dataset.upper()} latent-factor capacity: weak L2 versus no L2")
+    ax.set_xticks(factors)
+    ax.grid(axis="y", alpha=.2)
+    ax.legend(loc="upper center", bbox_to_anchor=(.5, -.16), ncol=2, fontsize=9)
+    fig.subplots_adjust(bottom=.32, top=.89)
+    fig.text(.5, .025, caption, ha="center", va="bottom", fontsize=8)
+
+    delta_fig, delta_ax = plt.subplots(figsize=(9, 5.8))
+    delta_ax.axhline(0., color="#555555", linewidth=1., linestyle=":", zorder=1,
+                     label="No change")
+    for metric, label, color in metrics:
+        column = "train_delta_mse" if metric == "train_mse" else "val_delta_mse"
+        delta_ax.plot(factors, delta[column], color=color,
+                      marker="o" if metric == "train_mse" else "s",
+                      linestyle="-" if metric == "train_mse" else "--",
+                      markersize=6, linewidth=1.7, zorder=3, label=label + r" $\Delta$MSE")
+    formatter = ScalarFormatter(useMathText=True)
+    formatter.set_powerlimits((0, 0))
+    delta_ax.yaxis.set_major_formatter(formatter)
+    delta_ax.set(xlabel="Latent-factor dimension F",
+                 ylabel=r"$\Delta$MSE = MSE($\lambda=0.01$) - MSE($\lambda=0$)",
+                 title=f"{dataset.upper()} weak-regularization effect (expanded difference scale)")
+    delta_ax.set_xticks(factors)
+    delta_ax.grid(axis="y", alpha=.2)
+    delta_ax.legend(loc="upper center", bbox_to_anchor=(.5, -.16), ncol=3, fontsize=9)
+    delta_fig.subplots_adjust(bottom=.32, top=.89)
+    delta_fig.text(.5, .025, caption + "\nNegative delta = lower MSE with lambda=0.01; positive delta = higher MSE.",
+                   ha="center", va="bottom", fontsize=8)
+    return fig, delta_fig, delta
+
+
+def render_capacity_figures(frame, output):
+    """Refresh only capacity PNGs from an existing results table."""
+    import matplotlib.pyplot as plt
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    for dataset in ("davis", "kiba"):
+        absolute, difference, delta = capacity_figures(frame, dataset)
+        for figure, suffix in ((absolute, "capacity"), (difference, "capacity_delta")):
+            figure.savefig(output / f"{dataset}_{suffix}.png", dpi=160)
+            plt.close(figure)
+        print(delta.to_string(index=False, float_format=lambda value: f"{value:+.8e}"))
+
+
 def stage_capacity(campaign):
     if not (OUT / "software_tests.json").exists():
         raise RuntimeError("Run the software-test stage first")
@@ -533,19 +628,9 @@ def stage_capacity(campaign):
     frame = peer_evidence(pd.DataFrame(rows))
     write_csv(OUT / "stage1_capacity.csv", frame)
     write_csv(OUT / "stage2_curve_diagnostics.csv", frame)
-    import matplotlib.pyplot as plt
+    render_capacity_figures(frame, OUT / "figures")
     for ds in ("davis", "kiba"):
         subset = successful(frame.loc[frame.dataset.eq(ds)])
-        fig, ax = plt.subplots(figsize=(7, 4))
-        for penalty, group in subset.groupby("regularization"):
-            ax.plot(group.n_factors, group.train_mse, "o--", label=f"Training, lambda={penalty:g}")
-            ax.plot(group.n_factors, group.val_mse, "o-", label=f"Validation, lambda={penalty:g}")
-        ax.set(xlabel="Latent factors", ylabel="MSE at best validation epoch", title=ds.upper())
-        ax.set_xticks(FACTORS)
-        ax.legend(fontsize=8)
-        fig.tight_layout()
-        fig.savefig(OUT / "figures" / f"{ds}_capacity.png", dpi=140)
-        plt.close(fig)
         for penalty in (0., .01):
             curve_plot(subset.loc[subset.regularization.eq(penalty)],
                        f"{ds}_capacity_curves_l{penalty:g}.png", f"{ds.upper()} capacity, lambda={penalty:g}")
@@ -809,11 +894,17 @@ def verify_published(evidence=EVIDENCE):
 def main():
     global OUT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--stage", choices=("prepare", "smoke", "tests", "capacity", "interaction", "rates", "seeds", "summarize", "verify"), required=True)
+    parser.add_argument("--stage", choices=("prepare", "smoke", "tests", "capacity", "capacity-plots", "interaction", "rates", "seeds", "summarize", "verify"), required=True)
     parser.add_argument("--output-dir", type=Path, default=EVIDENCE,
                         help="Published evidence for verify; use a fresh directory for deliberate reproduction")
     args = parser.parse_args()
     OUT = args.output_dir.resolve()
+    if args.stage == "capacity-plots":
+        # Plot-only route: do not instantiate Campaign or call a fitter.
+        import matplotlib
+        matplotlib.use("Agg")
+        render_capacity_figures(read_csv(OUT / "stage1_capacity.csv"), OUT / "figures")
+        return
     if args.stage != "prepare" and not (OUT / "manifest.json").is_file():
         parser.error("The separate full-evidence CSV/manifest bundle is not available here. "
                      "Use task2/biased_mf.ipynb to inspect recorded tables and verify the published models. "
