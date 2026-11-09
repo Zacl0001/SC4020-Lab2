@@ -3,8 +3,9 @@
 > **Published notebook and final models:** the [executed notebook](../../biased_mf.ipynb)
 > embeds the recorded tables, all 73 learning traces and explanations, including
 > the combined comparison with Jiaxin. The two final checkpoints are published
-> under `task2/saved_models/`. Separate CSV/image/log files and intermediate
-> checkpoints remain local; paths to them below identify local/generated evidence.
+> under `task2/saved_models/`. The four Stage 1 capacity/delta PNGs are also
+> published. Other separate CSV/image/log files and intermediate checkpoints
+> remain local; paths to them below identify local/generated evidence.
 > Rerunning the notebook needs no external result CSVs or images and does not
 > train. No full campaign was rerun for publication.
 
@@ -245,8 +246,41 @@ the number of training observations at the larger ranks.
 Full metrics, including CI, Hit@K, gaps, parameter counts and descriptive
 underfitting/overfitting indicators, are in `stage1_capacity.csv`.
 
-*Local/generated figure: `figures/davis_capacity.png` — DAVIS capacity.*
-*Local/generated figure: `figures/kiba_capacity.png` — KIBA capacity.*
+![DAVIS capacity: both weak-L2 and unregularized curves remain visible](figures/davis_capacity.png)
+![KIBA capacity: both weak-L2 and unregularized curves remain visible](figures/kiba_capacity.png)
+
+**Capacity-plot caption:** blue denotes training and orange denotes validation.
+Lambda=0 uses broad solid lines and large open circles drawn underneath thin
+dashed lines and small crosses for lambda=0.01. Both markers remain visible at
+nearly coincident positions; no jitter or numerical score offsets are applied.
+The weak penalty produces very small observed differences under
+`L=(SSE + lambda * sum(parameter^2))/(2N)`, with gradient contribution
+`lambda/N * parameter`. Near-overlap is therefore a measured result, not a
+missing series.
+
+![DAVIS paired training and validation delta MSE](figures/davis_capacity_delta.png)
+![KIBA paired training and validation delta MSE](figures/kiba_capacity_delta.png)
+
+**Difference-plot caption:** delta MSE is `MSE(lambda=0.01) - MSE(lambda=0)`
+at the same factor dimension, using each run's best-validation checkpoint.
+Training and validation deltas are plotted separately against F with a zero
+reference line and scientific-notation y-axis. Negative means lower MSE with
+weak L2; positive means higher MSE. The expanded difference scale reveals small
+effects without altering labels, smoothing observations or implying significance.
+The notebook also displays the paired differences numerically. The largest
+absolute validation differences are about **3.27e-4 for DAVIS** and **7.57e-4
+for KIBA**, much smaller than their absolute MSE levels.
+
+These figures can be refreshed from the existing local capacity table alone:
+
+```bash
+OPENBLAS_NUM_THREADS=1 .venv/bin/python -B -m task2.run_biased_mf --stage capacity-plots
+```
+
+This plot-only route reads `stage1_capacity.csv` and writes the four capacity
+PNGs; it never constructs a training campaign or calls the fitter. The notebook
+uses the same plotting helper with its embedded recorded table, requiring no
+external CSV to display the updated plots.
 
 **Finding:** for both penalties and datasets, training and best-validation MSE
 decrease at each tested increase in F. Thus the capacity benefit is supported,
