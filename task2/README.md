@@ -409,28 +409,116 @@ Let D/T count training drugs/targets, F count factors, N/V count training/valida
 
 Each gradient and each Adam moment has the same shape as its parameter. Factorization does not necessarily compress the table at the chosen rank: these parameter counts exceed the training observation counts, and DAVIS's interaction matrix rank is bounded by 68 even at F=128. Overparameterization, optimization and regularization all influence the result.
 
-### Full matrix equation
+### Full matrix equation — predicting all drug–protein combinations
 
-Using all-ones column vectors $\mathbf1_D$ and $\mathbf1_T$:
+For **one** drug $i$ and target $j$, Biased MF predicts an affinity with:
 
-$$\hat R=\mu\mathbf1_D\mathbf1_T^\top+b\mathbf1_T^\top+\mathbf1_Dc^\top+PQ^\top.$$
+$$
+\hat y_{ij}=\mu+b_i+c_j+\mathbf p_i^\top\mathbf q_j.
+$$
 
-Every term is D × T. The outer products broadcast the mean and biases. Transposition changes Q from T × F to F × T; multiplying P by $Q^\top$ sums matching latent coordinates, rather than multiplying complete matrices elementwise. A single dot product is the sum of coordinate-wise products for one drug/target row pair.
+The **full matrix equation** expresses that same calculation for *every* drug–target pair at once:
 
-MF always uses drug rows and protein columns for both datasets. Drug CF exchanges roles to reuse a neighbor-similarity implementation; that transposition is unnecessary for MF, which learns both sets of factors jointly. Different dimensions and sparsity only change array sizes and which observed pairs contribute gradients.
+$$
+\boxed{\hat R=\mu\mathbf1_D\mathbf1_T^\top+b\mathbf1_T^\top+\mathbf1_Dc^\top+PQ^\top.}
+$$
 
-### Illustrative two-drug, three-target example
+Here, $D$ is the number of drugs, $T$ is the number of protein targets and $F$ is the number of latent factors. $\mathbf1_D$ and $\mathbf1_T$ are **column vectors filled with ones**, of shapes $D\times1$ and $T\times1$. They are a mathematical way to repeat the same mean or bias across the required rows and columns; they are not parameters learned by Adam.
 
-Let $\mu=6$, $b=(0.3,-0.2)^\top$, $c=(0.1,-0.1,0.2)^\top$, and:
+| Term | Shape | What it contributes to each prediction $\hat R_{ij}$ |
+|---|---|---|
+| $\mu\mathbf1_D\mathbf1_T^\top$ | $D\times T$ | The same training global mean $\mu$ for every pair |
+| $b\mathbf1_T^\top$ | $D\times T$ | Drug $i$'s bias $b_i$, repeated across all targets |
+| $\mathbf1_Dc^\top$ | $D\times T$ | Protein $j$'s bias $c_j$, repeated across all drugs |
+| $PQ^\top$ | $D\times T$ | Pair-specific interaction $\mathbf p_i^\top\mathbf q_j$ |
 
-$$P=\begin{bmatrix}0.2&0.4\\-0.1&0.3\end{bmatrix},\qquad
-Q=\begin{bmatrix}0.5&0.2\\0.1&-0.2\\-0.3&0.4\end{bmatrix}.$$
+**Why transpose $Q$?** The learned drug-factor matrix $P$ has shape $D\times F$, whereas the learned protein-factor matrix $Q$ has shape $T\times F$. We transpose $Q$ (exchange its rows and columns) so that:
 
-Drug 1/target 1 has interaction $(0.2)(0.5)+(0.4)(0.2)=0.18$, hence prediction $6+0.3+0.1+0.18=6.58$. The full calculated prediction table is:
+$$
+\underbrace{P}_{D\times F}\underbrace{Q^\top}_{F\times T}
+=\underbrace{PQ^\top}_{D\times T}.
+$$
 
-$$\hat R=\begin{bmatrix}6.58&6.14&6.60\\5.91&5.63&6.15\end{bmatrix}.$$
+The entry in drug row $i$, protein column $j$ is the **dot product** of their two length-$F$ latent vectors:
 
-No actual labels are needed to calculate those predictions. In the code, indexed bias values plus `np.einsum("ij,ij->i", p, q)` compute one dot product per requested row. Queries are processed in chunks of at most 8,192 to limit temporary arrays.
+$$
+(PQ^\top)_{ij}=\sum_{f=1}^{F}P_{if}Q_{jf}.
+$$
+
+This is matrix multiplication, **not** element-by-element multiplication of the two full matrices. Also, transposing the **factor matrix $Q$** is not the same as transposing the **original affinity data $R$**. Biased MF keeps drugs as rows and proteins as columns for both DAVIS and KIBA. Drug-Based KNN may transpose the original matrix only to reuse a column-based similarity routine for comparing drugs.
+
+### Worked example — two drugs, three proteins, two latent factors
+
+For clarity, use an **illustrative** model with $D=2$, $T=3$, $F=2$. These numbers are examples, not measured DAVIS or KIBA results. Assume the already-trained parameters are:
+
+$$
+\mu=6,\qquad
+b=\begin{bmatrix}0.3\\-0.2\end{bmatrix},\qquad
+c=\begin{bmatrix}0.1\\-0.1\\0.2\end{bmatrix},
+$$
+
+$$
+P=\begin{bmatrix}0.2&0.4\\-0.1&0.3\end{bmatrix},\qquad
+Q=\begin{bmatrix}0.5&0.2\\0.1&-0.2\\-0.3&0.4\end{bmatrix}.
+$$
+
+We build the predicted $2\times3$ affinity matrix in **four additions**.
+
+**1. Repeat the global mean for all six pairs:**
+
+$$
+\mu\mathbf1_2\mathbf1_3^\top
+=\begin{bmatrix}6&6&6\\6&6&6\end{bmatrix}.
+$$
+
+**2. Add the bias belonging to each drug:**
+
+$$
+b\mathbf1_3^\top
+=\begin{bmatrix}0.3&0.3&0.3\\-0.2&-0.2&-0.2\end{bmatrix}.
+$$
+
+**3. Add the bias belonging to each protein:**
+
+$$
+\mathbf1_2c^\top
+=\begin{bmatrix}0.1&-0.1&0.2\\0.1&-0.1&0.2\end{bmatrix}.
+$$
+
+**4. Add the interaction matrix.** The drug vectors are the rows of $P$ and the target vectors are the rows of $Q$. For Drug A and Protein T1, the dot product is:
+
+$$
+\mathbf p_A^\top\mathbf q_{T1}
+=(0.2)(0.5)+(0.4)(0.2)=0.18.
+$$
+
+Doing the same for all six drug–target pairs gives:
+
+$$
+PQ^\top=\begin{bmatrix}0.18&-0.06&0.10\\0.01&-0.07&0.15\end{bmatrix}.
+$$
+
+**Add the four matrices:**
+
+$$
+\hat R=
+\underbrace{\begin{bmatrix}6&6&6\\6&6&6\end{bmatrix}}_{\text{global mean}}
++\underbrace{\begin{bmatrix}0.3&0.3&0.3\\-0.2&-0.2&-0.2\end{bmatrix}}_{\text{drug bias}}
++\underbrace{\begin{bmatrix}0.1&-0.1&0.2\\0.1&-0.1&0.2\end{bmatrix}}_{\text{protein bias}}
++\underbrace{\begin{bmatrix}0.18&-0.06&0.10\\0.01&-0.07&0.15\end{bmatrix}}_{\text{interaction}}
+=\boxed{\begin{bmatrix}6.58&6.14&6.60\\5.91&5.63&6.15\end{bmatrix}}.
+$$
+
+| Predicted affinity | Protein T1 | Protein T2 | Protein T3 |
+|---|---:|---:|---:|
+| **Drug A** | 6.58 | 6.14 | 6.60 |
+| **Drug B** | 5.91 | 5.63 | 6.15 |
+
+For instance, **Drug A–T1** is $6+0.3+0.1+0.18=6.58$. For Drug A, the highest *predicted* affinity among these three proteins is T3 (6.60). Whether that recommendation is correct can only be checked if the corresponding **actual affinity** is measured and available for evaluation.
+
+**What happens in the Python implementation?** The full $\hat R$ is only conceptual. The function `predict_biased_mf()` looks up the appropriate biases and factor rows for the *requested* pairs, then calculates their dot products with `np.einsum("ij,ij->i", p, q)`. It computes predictions in chunks of at most 8,192 rows rather than constructing a dense matrix for every possible pair.
+
+The learned parameters $b,c,P,Q$ were obtained earlier during training using the observed affinity labels, the regularized loss and Adam. **Once trained, making a prediction requires only known drug and protein identifiers; the true affinity is not an input to the prediction function.**
 
 ## Squared error, objective and regularization
 
