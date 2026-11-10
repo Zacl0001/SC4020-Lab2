@@ -673,7 +673,7 @@
       "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_biased_mf.npz"
     }
   ],
-  "notebook_sha256": "69467ad89192e46a26cb11b1224bfa66d2483602c8821a1e274dc78a2c4a1bf3",
+  "notebook_sha256": "5b56be16d4d432e6a5d23d338532f0f06274cefdbdf0474e80df8f16a93ded8a",
   "note": "Dependency/training guards were used only by the external verifier, not embedded in the delivered notebook.",
   "prior_workspace_tests_passed": 32,
   "branch_verification": {
@@ -688,5 +688,13 @@
     "metrics_and_cases_unchanged": true,
     "original_worktree_unchanged": true,
     "test_command": "python -m unittest discover -s task2/tests -p 'test*.py' -v"
+  },
+  "case_selection": {
+    "minimum_measured_test_candidates": 10,
+    "rule": "three smallest eligible canonical drug IDs per dataset",
+    "uses_affinity_or_prediction_outcomes": false,
+    "chosen_drugs_unchanged": true,
+    "notebook_reexecuted": true,
+    "case_results_unchanged": true
   }
 }

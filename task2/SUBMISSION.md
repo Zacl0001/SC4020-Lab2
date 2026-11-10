@@ -92,7 +92,7 @@ outputs. The supplied checkpoints in `task2/saved_models/` are not overwritten.
 - Model selection uses validation MSE. Those choices are kept unchanged when
   test performance is reported; test results do not select another winner.
 - Prior test exposure is disclosed. The cases are the three smallest canonical
-  test drug IDs per dataset with at least six measured candidates, not cases
+  test drug IDs per dataset with at least ten measured candidates, not cases
   chosen for favorable predictions.
 
 ## Training reproduction is separate
