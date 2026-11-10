@@ -1,20 +1,24 @@
 """Protein-based CF using observed training affinities only."""
 
 import numpy as np
-import pandas as pd
-
-DRUG = "compound_iso_smiles"
-PROTEIN = "target_sequence"
+from shared_data import (DRUG, PROTEIN, SCHEMA, training_axes, positions, axis,
+                         mapping_metadata)
 
 
-# Build the drug-by-protein matrix and learn protein similarities and means from training data.
-def fit_protein_cf(training, shrinkage=10.0):
-    """Learn protein similarities and averages from training data"""
-    # create drug-protein matrix
-    matrix = training.pivot(index=DRUG, columns=PROTEIN, values="affinity")
+def _validate_axes(model):
+    if str(model.get("canonical_schema", "")) != SCHEMA:
+        raise ValueError("Use a freshly fitted canonical-ID CF checkpoint")
+    axis(model["drugs"], "drugs")
+    axis(model["proteins"], "proteins")
+
+
+def fit_protein_cf(training, shrinkage=10.0, n_drugs=None, n_proteins=None):
+    drugs, proteins = training_axes(training, n_drugs, n_proteins)
+    if not np.isfinite(training.affinity.to_numpy(dtype=float)).all():
+        raise ValueError("Observed training affinities must be finite")
+    matrix = training.pivot(index=DRUG, columns=PROTEIN, values="affinity").reindex(index=drugs, columns=proteins)
     values = matrix.to_numpy(dtype=float)
     observed = np.isfinite(values)
-    # produce true where affinity is observed, false otherwise
     counts = observed.astype(np.int64).T @ observed.astype(np.int64)
     # pandas computes pairwise Pearson using only jointly observed rows.
     correlations = matrix.corr(method="pearson", min_periods=2).to_numpy()
@@ -23,8 +27,10 @@ def fit_protein_cf(training, shrinkage=10.0):
     np.fill_diagonal(similarities, 0)
     return {
         "values": values,
-        "drugs": matrix.index.to_numpy(dtype=str),
-        "proteins": matrix.columns.to_numpy(dtype=str),
+        "drugs": drugs,
+        "proteins": proteins,
+        "canonical_schema": SCHEMA,
+        **mapping_metadata(training),
         "similarities": similarities,
         "common_counts": counts,
         "protein_means": np.nanmean(values, axis=0),
@@ -33,15 +39,15 @@ def fit_protein_cf(training, shrinkage=10.0):
     }
 
 
-# Predict using similar proteins; return affinity predictions and flags marking fallback use.
 def predict_protein_cf(model, pairs, k=None, min_common=None):
-    """Return predictions and fallback flags; affinity labels are not read (read their ID only)."""
+    """Read numeric IDs only; unseen nonnegative IDs retain mean fallbacks."""
+    _validate_axes(model)
     k = int(model["k"] if k is None else k)
     min_common = int(model["min_common"] if min_common is None else min_common)
     if k < 1 or min_common < 2:
         raise ValueError("Require k >= 1 and min_common >= 2")
-    drugs = pd.Index(model["drugs"]).get_indexer(pairs[DRUG])
-    proteins = pd.Index(model["proteins"]).get_indexer(pairs[PROTEIN])
+    drugs = positions(pairs, DRUG, len(model["drugs"]), fallback=True)
+    proteins = positions(pairs, PROTEIN, len(model["proteins"]), fallback=True)
     predictions = np.full(len(pairs), float(model["global_mean"]))
     fallback = np.ones(len(pairs), dtype=bool)
     known_target = proteins >= 0
@@ -70,12 +76,13 @@ def predict_protein_cf(model, pairs, k=None, min_common=None):
     return predictions, fallback
 
 
-# Save the trained Protein CF model to a compressed .npz file.
 def save_protein_cf(model, path):
+    _validate_axes(model)
     np.savez_compressed(path, **model)
 
 
-# Load a saved Protein CF model so it can make predictions again.
 def load_protein_cf(path):
     with np.load(path, allow_pickle=False) as saved:
-        return {name: saved[name].copy() for name in saved.files}
+        model = {name: saved[name].copy() for name in saved.files}
+    _validate_axes(model)
+    return model

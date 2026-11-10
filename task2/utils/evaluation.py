@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 
+from shared_data import DRUG, PROTEIN, ids
+
 
 def _scores(actual, predicted):
     actual = np.asarray(actual, dtype=float)
@@ -55,11 +57,13 @@ def concordance_index(actual, predicted):
     return points / comparable if comparable else float("nan")
 
 
-def hit_at_k(candidates, predicted, k=1, drug_col="compound_iso_smiles",
-             target_col="target_sequence", score_col="affinity"):
+def hit_at_k(candidates, predicted, k=1, drug_col=DRUG,
+             target_col=PROTEIN, score_col="affinity"):
     """Macro Hit@K over ligands with >=1 observed candidate.
 
-    Rank by prediction descending, then target ID as a string ascending.
+    Rank by prediction descending, then canonical numeric protein ID ascending.
+    This equals the original sorted-sequence tie order; never stringify numbers.
+    Explicit string-column arguments support historical audits.
     All targets tied for best actual score count as true best. Use min(k, n)
     candidates for a ligand with n candidates; singletons are eligible.
     Return the hit rate and eligible ligand count (NaN, 0 for empty input).
@@ -70,7 +74,9 @@ def hit_at_k(candidates, predicted, k=1, drug_col="compound_iso_smiles",
     if candidates[[drug_col, target_col]].isna().any().any():
         raise ValueError("Candidate IDs must be present")
     frame = candidates[[drug_col, target_col]].reset_index(drop=True).copy()
-    frame[target_col] = frame[target_col].astype(str)
+    if drug_col == DRUG:
+        frame[drug_col] = ids(candidates, drug_col)
+    frame[target_col] = ids(candidates, target_col) if target_col == PROTEIN else frame[target_col].astype(str)
     if frame.duplicated([drug_col, target_col]).any():
         raise ValueError("Candidate drug–target pairs must be unique")
     frame["_prediction"] = predicted
