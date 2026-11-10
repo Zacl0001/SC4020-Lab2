@@ -1,0 +1,133 @@
+{
+  "schema": "dataset_wide_sorted_identity_v1",
+  "cleaning": [
+    {
+      "dataset": "davis",
+      "raw_rows": 30056,
+      "invalid_scores": 0,
+      "invalid_ids": 0,
+      "duplicate_excess": 4284,
+      "drugs": 68,
+      "proteins": 379,
+      "cleaned_rows": 25772,
+      "score_scale": "supplied pKd",
+      "score_transformation": "none",
+      "cleaned_reference": "task2/data/davis_clean_task2.csv",
+      "reclean_max_abs_difference": 1.7763568394002505e-15,
+      "reclean_nonidentical_floats": 121,
+      "cleaned_serialization_policy": "retain exact validated cleaned cells after mean-aggregation audit"
+    },
+    {
+      "dataset": "kiba",
+      "raw_rows": 118254,
+      "invalid_scores": 0,
+      "invalid_ids": 0,
+      "duplicate_excess": 597,
+      "drugs": 2068,
+      "proteins": 229,
+      "cleaned_rows": 117657,
+      "score_scale": "supplied transformed KIBA",
+      "score_transformation": "none",
+      "cleaned_reference": "data/kiba_clean.csv",
+      "reclean_max_abs_difference": 0.0,
+      "reclean_nonidentical_floats": 0,
+      "cleaned_serialization_policy": "retain exact validated cleaned cells after mean-aggregation audit"
+    }
+  ],
+  "datasets": [
+    {
+      "dataset": "davis",
+      "rows": 25772,
+      "drugs": 68,
+      "proteins": 379,
+      "cleaned_sha256": "c1aed0acfa8715b86651c0c5b03f3beca07af666e233029dbb2db9ea3f1e09fc",
+      "indexed_sha256": "654938c1765506ea397acbc5ade3d0ccdad2b347085b576f9f9104dac558a797",
+      "dataset_wide_ids_equal_old_training_order": true
+    },
+    {
+      "dataset": "kiba",
+      "rows": 117657,
+      "drugs": 2068,
+      "proteins": 229,
+      "cleaned_sha256": "c2eeb86d97af9350e6aa224536d3fdc0508be8612b3b04693f3ed9d35e8bb654",
+      "indexed_sha256": "43b1f5af30cae02090cbc1f37c8a4d7d2727e49b4bded844c3b2cdabc4546bc5",
+      "dataset_wide_ids_equal_old_training_order": true
+    }
+  ],
+  "task2_splits": [
+    {
+      "dataset": "davis",
+      "split": "train",
+      "rows": 18040,
+      "original_sha256": "cab7190fc87c370e2534647994c4a506459fc6795361fdc35059648ae938f48c",
+      "indexed_sha256": "b7ad0d40950f373829f750d6c7f0512bf3447a3ccd66fd85b160566175e0a3f2",
+      "exact_original_cells": true,
+      "pairs_disjoint": true,
+      "warm_start": true,
+      "cleaned_vs_split_float_differences": 3,
+      "cleaned_vs_split_max_abs_difference": 1.7763568394002505e-15
+    },
+    {
+      "dataset": "davis",
+      "split": "val",
+      "rows": 3865,
+      "original_sha256": "fb7346d25a51d2f2b3d53edaa8858cae92a534f51b346196d7cdbda09252ace5",
+      "indexed_sha256": "390fb6c94aea0b8d300280062aa41f5b0de296222484121752d3ff7ab7e84766",
+      "exact_original_cells": true,
+      "pairs_disjoint": true,
+      "warm_start": true,
+      "cleaned_vs_split_float_differences": 0,
+      "cleaned_vs_split_max_abs_difference": 0.0
+    },
+    {
+      "dataset": "davis",
+      "split": "test",
+      "rows": 3867,
+      "original_sha256": "3394f7e31631ecc7d314f8c92c01cf96497d96b21ac6bcd9c76b634ed0d28c9b",
+      "indexed_sha256": "ac93d627877c14e4bee08399dccbfeb4da007b1d32e940ee1bb3b3977626fa2a",
+      "exact_original_cells": true,
+      "pairs_disjoint": true,
+      "warm_start": true,
+      "cleaned_vs_split_float_differences": 0,
+      "cleaned_vs_split_max_abs_difference": 0.0
+    },
+    {
+      "dataset": "kiba",
+      "split": "train",
+      "rows": 82359,
+      "original_sha256": "e2fac91c3280faab82e22ca19c6beed27e6fc45b3b087f2d5f03321b910de2a3",
+      "indexed_sha256": "6ca2e4f16bfdb113f482bcc76acf3242510d221000caacf902a2ea56a61e10ef",
+      "exact_original_cells": true,
+      "pairs_disjoint": true,
+      "warm_start": true,
+      "cleaned_vs_split_float_differences": 9548,
+      "cleaned_vs_split_max_abs_difference": 1.7763568394002505e-15
+    },
+    {
+      "dataset": "kiba",
+      "split": "val",
+      "rows": 17648,
+      "original_sha256": "9817a3d18556dd5cb068c013341c786730c8fe1a6bf4cb898a9d6ed25cba985d",
+      "indexed_sha256": "b5207a61b703e2e1c7772179426802325a8c6131f6d7ac05de0db1ed76d7cd0b",
+      "exact_original_cells": true,
+      "pairs_disjoint": true,
+      "warm_start": true,
+      "cleaned_vs_split_float_differences": 2041,
+      "cleaned_vs_split_max_abs_difference": 1.7763568394002505e-15
+    },
+    {
+      "dataset": "kiba",
+      "split": "test",
+      "rows": 17650,
+      "original_sha256": "ef7812a638569cd9fe7b6c3cb1b8524b2d7b281056738620a15771d9b3c99453",
+      "indexed_sha256": "83624544f41905dfd0312bca1642b0d35b029817e2c56899d21c056a19fe9a0a",
+      "exact_original_cells": true,
+      "pairs_disjoint": true,
+      "warm_start": true,
+      "cleaned_vs_split_float_differences": 2040,
+      "cleaned_vs_split_max_abs_difference": 1.7763568394002505e-15
+    }
+  ],
+  "id_assignment_uses_affinities": false,
+  "test_evaluation_performed": false
+}
