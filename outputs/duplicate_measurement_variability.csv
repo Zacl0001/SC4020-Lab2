@@ -1,0 +1,3 @@
+Dataset,Distinct valid pairs,Pairs with repeated measurements,Repeated pairs (%),Maximum measurements per pair,Median within-pair SD,Mean within-pair SD,Maximum within-pair range
+DAVIS,25772,1224,4.74934036939314,15,0.0,0.24829897306747817,4.745270023988987
+KIBA,117657,473,0.40201602964549493,8,0.10696239876682259,0.2432212769818633,2.777782287999999

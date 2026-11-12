@@ -1,0 +1,5 @@
+Dataset,Coverage measure,Minimum,25th percentile,Median,Mean,75th percentile,Maximum,Standard deviation
+DAVIS,Targets per ligand,379,379.0,379.0,379.0,379.0,379,0.0
+DAVIS,Ligands per target,68,68.0,68.0,68.0,68.0,68,0.0
+KIBA,Targets per ligand,11,14.0,31.0,56.894100580270795,104.25,166,48.77323200929333
+KIBA,Ligands per target,11,167.0,567.0,513.7860262008734,771.0,1432,350.93229538506057
