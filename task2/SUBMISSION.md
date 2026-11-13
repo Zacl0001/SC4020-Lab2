@@ -54,8 +54,9 @@ The six input CSVs are sufficient for the actual preparation checks. The raw dat
 supports cleaning/count verification; the validated cleaned files preserve score
 serialization; the compact assignments preserve the original split rows and
 affinity tokens. Canonical mappings and indexed splits are regenerated, so they
-do not need to be shipped as extra copies. `data/davis_clean.csv` is an older
-double-conversion artifact and is not a submission input.
+do not need to be shipped as extra copies. The exploratory analysis writes a
+separate `data/davis_clean.csv`; this package uses the validated Task 2 reference
+at `task2/data/davis_clean_task2.csv` instead.
 
 ## Run the notebook
 
@@ -86,7 +87,9 @@ outputs. The supplied checkpoints in `task2/saved_models/` are not overwritten.
 - The KNN search contains 48 previously measured validation configurations.
 - The MF study contains 73 recorded fits and 3,275 epoch rows. The notebook embeds
   these verified tables, labels them as recorded experiments and regenerates
-  their figures. It does not present them as new fits.
+  their figures. It does not present them as new fits. Two historical lambda=100
+  supplementary results and their provenance are embedded separately; they are
+  outside the 73-fit campaign and excluded from selection.
 - Training/validation/test metrics and all six recommendation cases are computed
   from actual predictions during Run All.
 - Model selection uses validation MSE. Those choices are kept unchanged when

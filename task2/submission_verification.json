@@ -29,7 +29,7 @@
   "package_file_count": 23,
   "executed_in_clean_directory": true,
   "errors": 0,
-  "code_cells": 15,
+  "code_cells": 16,
   "sections": [
     [
       "1",
@@ -84,7 +84,7 @@
       "Limitations and conclusion"
     ]
   ],
-  "generated_figures": 10,
+  "generated_figures": 12,
   "training_calls": 0,
   "experiment_fits": 0,
   "recorded_knn_configurations": 48,
@@ -94,7 +94,7 @@
   "checkpoints_verified": 8,
   "predictions_metrics_cases_unchanged": true,
   "production_checkpoints_unchanged": true,
-  "original_notebooks_unchanged": true,
+  "baseline_notebooks_unchanged": true,
   "input_data_unchanged": true,
   "git_history_required": false,
   "private_artifacts_required": false,
@@ -673,7 +673,38 @@
       "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_biased_mf.npz"
     }
   ],
-  "notebook_sha256": "5b56be16d4d432e6a5d23d338532f0f06274cefdbdf0474e80df8f16a93ded8a",
+  "notebook_sha256": "e5bd62b0ccc9dc2b96eaa32c4b8bff7329fc6cc03451f62137c854a31b9bb34c",
+  "published_metrics": {
+    "path": "task2/results/train_validation_test_metrics.csv",
+    "generated_path": "task2/results/task2_submission/review/train_validation_test_metrics.csv",
+    "rows": 24,
+    "bytes": 2929,
+    "sha256": "3a1c247f6bcd594fd80723bc75e87d41eccb1e8687f5e83ad84fdf690b934787",
+    "byte_identical_to_independent_execution": true
+  },
+  "cleanup_verification": {
+    "base_commit": "2b8c1f7894e0e634e20864ea66a561a41b197843",
+    "independent_package_files": 23,
+    "code_cells": 16,
+    "figures": 12,
+    "tests_passed": 18,
+    "physical_fits_preserved": 73,
+    "epoch_rows_preserved_exactly": 3275,
+    "shared_tables_scientifically_equal": 10,
+    "existing_campaign_metadata_unchanged": true,
+    "historical_supplement_rows_preserved_exactly": 2,
+    "historical_supplement_in_campaign_or_selection": false,
+    "reference_comparisons_exact": 4,
+    "model_and_evaluation_implementations_unchanged": true,
+    "metric_rows_exact": 24,
+    "case_studies_exact": 6,
+    "checkpoint_checks_exact": 8,
+    "published_csv_byte_identical": true,
+    "no_other_notebooks_or_historical_results_required": true,
+    "training_calls": 0,
+    "obsolete_files_removed": 7,
+    "verification_scope": "Independent Run All with fitting disabled and no historical results, other notebooks, runner scripts or Git history in the package. The MF software tests ran separately. Earlier branch/dependency audit records elsewhere in this file describe their original verification runs."
+  },
   "note": "Dependency/training guards were used only by the external verifier, not embedded in the delivered notebook.",
   "prior_workspace_tests_passed": 32,
   "branch_verification": {

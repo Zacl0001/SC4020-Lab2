@@ -890,7 +890,7 @@ def main():
         return
     if args.stage != "prepare" and not (OUT / "manifest.json").is_file():
         parser.error("The separate full-evidence CSV/manifest bundle is not available here. "
-                     "Use task2/biased_mf.ipynb to inspect recorded tables and verify the published models. "
+                     "Use task2/task2.ipynb to inspect recorded tables and verify the published models. "
                      "For deliberate full reproduction use --stage prepare with a fresh --output-dir, "
                      "or point --output-dir to an existing completed run. Verification never trains a model.")
     if args.stage == "verify":

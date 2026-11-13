@@ -9,9 +9,10 @@ test and recommendation results. It includes all 13 assignment sections and
 three fixed test-ligand cases for each dataset.
 
 Jiaxin implemented Global Mean, Protein-Based KNN and Drug-Based KNN;
-WeiW0917 implemented Biased Matrix Factorization. The original per-model notebooks
-and reports are retained as earlier working records. Use `task2.ipynb` as the
-current entry point for the canonical-ID checkpoints.
+WeiW0917 implemented Biased Matrix Factorization. The earlier baseline notebooks
+remain as working records. The MF experiments and their historical supplementary
+evidence are consolidated in `task2.ipynb`, the current entry point for all four
+models and their canonical-ID checkpoints.
 
 ## Run from the repository root
 
@@ -31,6 +32,12 @@ Alternatively, select that environment in Jupyter and Run All interactively.
 Generated figures, tables, full case rankings and checkpoint copies go to
 `task2/results/task2_submission/review/`, which is ignored by Git. The production
 checkpoints in `task2/saved_models/` are not overwritten.
+
+The verified [final metrics CSV](results/train_validation_test_metrics.csv) is
+published separately for direct access on GitHub. It contains 24 rows covering
+both datasets, all four models and the training/validation/test splits. Run All
+regenerates the same CSV under the ignored review directory. See the
+[results guide](results/README.md) for columns and provenance.
 
 For the independent 23-file lecturer package, see [SUBMISSION.md](SUBMISSION.md).
 `requirements-submission.txt` contains its smaller dependency list. No old
@@ -54,6 +61,9 @@ The notebook contains full-precision records for the 48-setting KNN search and
 73-fit MF campaign, including all 3,275 MF epoch rows. These are clearly labelled
 as recorded experiments. The figures are regenerated from those records; current
 model comparison and case metrics are computed from checkpoint predictions.
+Section 7 also preserves the regularization/rate learning curves, extension
+prefix checks and two historical lambda=100 results. Those two supplementary
+results are outside the 73-fit campaign and do not participate in model selection.
 Prior test exposure is disclosed, and test results do not change model selection.
 
 ## Verification
