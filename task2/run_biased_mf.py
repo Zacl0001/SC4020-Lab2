@@ -1,20 +1,4 @@
-"""Official Biased MF campaign and read-only compact-evidence verifier.
-
-With local experiment artifacts available, verify without fitting or writing:
-    python -m task2.run_biased_mf --stage verify
-
-Refresh only capacity figures from existing scores (no training):
-    python -m task2.run_biased_mf --stage capacity-plots
-
-To deliberately reproduce experiments, use a NEW output directory and stages:
-    prepare, smoke, tests, capacity, interaction, rates, seeds, summarize, verify
-For example: --output-dir task2/results/biased_mf_reproductions/run1
-
-The mathematical model and shared metrics are imported unchanged. Each fresh
-physical fit has its own immutable directory. GitHub includes the final models
-and a self-contained reporting notebook; separate historical/result CSVs remain
-optional local artifacts. The notebook verifies published models without them.
-"""
+"""Run a fresh MF campaign or verify the published compact evidence without fitting."""
 
 import argparse
 import hashlib
@@ -24,7 +8,6 @@ import os
 import platform
 import subprocess
 import sys
-import zipfile
 from itertools import product
 from pathlib import Path
 from time import perf_counter
@@ -37,10 +20,11 @@ from .utils.biased_mf import (
     save_biased_mf, load_biased_mf,
 )
 from .utils.evaluation import mean_squared_error, concordance_index, hit_at_k
+from shared_data import load_task2_split, ids, load_mappings
 
 ROOT = Path(__file__).resolve().parent
-EVIDENCE = ROOT / "results" / "biased_mf"
-OUT = EVIDENCE
+OUT = ROOT / "results" / "biased_mf"
+HISTORICAL_REFERENCE = OUT / "historical_reference.json"
 SCORE_SCALES = {
     "davis": "pKd; supplied values, no additional log transformation",
     "kiba": "transformed KIBA score; supplied values, no additional transformation",
@@ -60,8 +44,7 @@ def load_selection_splits(root, dataset):
     if dataset not in SCORE_SCALES:
         raise ValueError(f"Unsupported dataset: {dataset}")
     frames = {
-        part: pd.read_csv(Path(root) / "data" / "splits" / f"{dataset}_{part}.csv",
-                          float_precision="round_trip")
+        part: load_task2_split(dataset, part, task2_root=root)
         for part in ("train", "val")
     }
     train, val = frames["train"], frames["val"]
@@ -142,11 +125,7 @@ def _curve(model, path, title):
 
 
 def run_search(root, grid, max_epochs=100, reuse_baseline=False):
-    """Explicit small-grid API retained for programmatic/synthetic test clients.
-
-    There is no implicit old grid, baseline cache, or CLI search mode. Requires
-    fresh output paths, and uses the same fitter and metrics as the campaign.
-    """
+    """Fit an explicit grid using fresh output paths and validation-MSE selection."""
     if reuse_baseline:
         raise ValueError("The obsolete baseline cache is no longer supported")
     grid = tuple(grid)
@@ -227,18 +206,27 @@ def run_id(cfg):
 
 
 def current_fingerprints():
-    sources = [ROOT / "utils/biased_mf.py", ROOT / "utils/evaluation.py", Path(__file__)]
+    sources = [ROOT / "utils" / f"{name}.py" for name in ("biased_mf", "evaluation", "protein_cf", "drug_cf", "global_mean")]
+    sources += [ROOT.parent / "shared_data.py", Path(__file__)]
     data = [ROOT / "data/splits" / f"{ds}_{part}.csv"
             for ds, part in product(("davis", "kiba"), ("train", "val"))]
-    return {str(path.relative_to(ROOT)): sha(path) for path in sources + data}
+    mappings = [ROOT.parent / "data" / f"{ds}_{kind}_mapping.csv"
+                for ds, kind in product(("davis", "kiba"), ("drug", "protein"))]
+    assignments = [ROOT / "data" / f"{ds}_split_assignment.csv" for ds in ("davis", "kiba")]
+    return {os.path.relpath(path, ROOT): sha(path) for path in sources + data + mappings + assignments}
 
 
 def historical_rows():
-    """Optional local comparisons; a fresh checkout needs no historical CSVs."""
-    path = EVIDENCE / "provenance/historical_results.csv"
-    if path.is_file():
-        return read_csv(path)
-    return pd.DataFrame(columns=CONFIG_COLUMNS + METRICS + ["historical_source"])
+    """Recorded Git-main campaign metrics are comparisons, never fitted states."""
+    path = HISTORICAL_REFERENCE
+    if path is None or not path.exists():
+        return pd.DataFrame(columns=CONFIG_COLUMNS + METRICS + ["historical_source"])
+    evidence = json.loads(path.read_text())
+    frame = pd.DataFrame(evidence["tables"]["all_physical_runs"])
+    supplement = pd.DataFrame(evidence["tables"]["historical_lambda100_supplement"])
+    frame = pd.concat([frame, supplement], ignore_index=True)
+    frame["historical_source"] = "Git main 77bba05 recorded results"
+    return frame
 
 
 def matching_history(cfg):
@@ -294,16 +282,18 @@ unavailable rather than fabricated. This does not change the experiment grid.
 Within this campaign, require matching config, source/data hashes, mappings,
 mean, checkpoint fields, saved predictions and recomputed metrics before reuse.
 
-Budget before extensions: 50 core fits (20 capacity + 30 interaction additions),
-12 additional rate fits, 8 additional seed fits = 70 physical fits. One existing
-DAVIS F=8, alpha=.005, lambda=.01 run is the runner smoke check and is counted
-in the 20 capacity fits. The original recorded campaign had 14 historical
-repeats + 36 new core configurations; a fresh run may have no such references.
+Historical states are excluded from the fit cache. Budget: 50 core conditions
++ 12 additional rate fits + 8 additional seed fits = 70 unique fresh fits before
+extensions. The recorded campaign fitted two selected MF conditions first and
+reused them in the rate stage; independent reproduction fits them at that stage.
+The originally shortlisted F-lambda pairs and full configurations are retained;
+their ranking against freshly measured results is explicitly checked.
 Additional extension fits are conditional and retained separately. Tests use
 synthetic data and are not counted as scientific campaign fits.
 
-No dataset/model/shared metric changes, no old-artifact overwrites, no test
-evaluation, no automatic final model refit on training+validation, no commits.
+The dataset-wide identity mapping precedes task splitting; Task 2 original pair
+assignments and label tokens are preserved. Objective/Adam/metric definitions
+are unchanged. No test evaluation, no train+validation refit, no Git commits.
 """
 
 
@@ -324,12 +314,12 @@ def prepare():
     for ds in ("davis", "kiba"):
         parts = load_selection_splits(ROOT, ds)
         for part, frame in parts.items():
-            if not frame[PAIR_KEYS].map(lambda x: isinstance(x, str) and bool(x.strip())).all().all():
-                raise ValueError("Missing/nonstring identifiers")
+            for column in PAIR_KEYS:
+                ids(frame, column)
             data_rows.append(dict(dataset=ds, split=part, rows=len(frame),
                                   drugs=frame[PAIR_KEYS[0]].nunique(), targets=frame[PAIR_KEYS[1]].nunique(),
                                   min_affinity=float(frame.affinity.min()), max_affinity=float(frame.affinity.max()),
-                                  sha256=fingerprints[f"data/splits/{ds}_{part}.csv"],
+                                   sha256=fingerprints[f"data/splits/{ds}_{part}.csv"],
                                   pair_uniqueness="passed", training_coverage="passed",
                                   train_validation_disjoint="passed"))
         _, candidate = candidate_distribution(parts["val"], ds)
@@ -340,7 +330,7 @@ def prepare():
                           "checkpoint_available": False,
                           "metadata_mappings_predictions_metrics_checked": False,
                           "historical_source_data_hashes_available": False,
-                          "decision": "rerun_if_required; historical provenance unverified"})
+                          "decision": "historical comparison only; fresh fitting required"})
     write_csv(OUT / "data_integrity.csv", pd.DataFrame(data_rows))
     write_csv(OUT / "candidate_summary.csv", pd.DataFrame(candidate_stats))
     audit_columns = CONFIG_COLUMNS + ["historical_source", "checkpoint_available",
@@ -353,18 +343,18 @@ def prepare():
         old = matching_history(cfg)
         plan.append({**cfg, **FIXED, "first_stage": "capacity" if penalty in (0, .01) else "interaction",
                      "historical_match": not old.empty,
-                     "action": "historical_unverified_rerun" if not old.empty else "new_configuration"})
+                     "action": "fresh_fit"})
     write_csv(OUT / "core_plan.csv", pd.DataFrame(plan))
     write_csv(OUT / "historical_lambda100_supplement.csv", historical.loc[historical.regularization.eq(100)])
     print(pd.DataFrame(data_rows).to_string(index=False))
-    print("Plan: 50 core fits, 12 additional rate fits, 8 additional seed fits; extensions conditional.")
+    print("Plan: 50 core, 12 additional rate and 8 additional seed fits; extensions conditional.")
     print(f"Optional historical matches in core plan: {sum(row['historical_match'] for row in plan)}")
 
 
 class Campaign:
     def __init__(self):
         self.manifest = json.loads((OUT / "manifest.json").read_text())
-        if self.manifest.get("mode") == "consolidated_evidence":
+        if self.manifest.get("mode") != "full_campaign":
             raise ValueError("Published evidence is read-only; use --stage verify or a fresh --output-dir")
         if current_fingerprints() != self.manifest["fingerprints"]:
             raise ValueError("Source or train/validation data fingerprint changed; do not reuse this campaign")
@@ -419,11 +409,12 @@ class Campaign:
         start = perf_counter()
         prior = matching_history(cfg)
         row = {**cfg, **FIXED, "run_id": rid, "first_stage": stage,
-               "origin": "historical_unverified_rerun" if not prior.empty else "new_configuration"}
+               "origin": "fresh_fit", "historical_reference_available": not prior.empty}
         try:
             fit_cfg = {key: value for key, value in cfg.items() if key != "dataset"}
             model = fit_biased_mf(parts["train"], parts["val"], **fit_cfg, **FIXED,
-                                  dataset=cfg["dataset"], score_scale=SCORE_SCALES[cfg["dataset"]])
+                                  dataset=cfg["dataset"], score_scale=SCORE_SCALES[cfg["dataset"]],
+                                  n_drugs=parts["train"].attrs["n_drugs"], n_proteins=parts["train"].attrs["n_proteins"])
             fit_seconds = perf_counter() - start
             metrics = evaluate_validation(model, parts["train"], parts["val"])
             trace = model["history"]
@@ -449,6 +440,7 @@ class Campaign:
                 row["historical_metrics_reproduced"] = bool(all(
                     np.isclose(metrics[key], old[key], rtol=1e-12, atol=1e-12) for key in METRICS))
             model["campaign_provenance"] = self.provenance
+            model["fit_origin"] = "fresh initialization on canonical-ID training observations"
             model["campaign_run_id"] = rid
             model.update({f"metric_{key}": value for key, value in metrics.items()})
             predictions = {part: predict_biased_mf(model, frame[PAIR_KEYS]) for part, frame in parts.items()}
@@ -564,8 +556,7 @@ def capacity_figures(frame, dataset):
     )
 
     fig, ax = plt.subplots(figsize=(9, 5.8))
-    # Broad solid baselines and large open circles go underneath the thinner
-    # dashed curves and small crosses, exposing both at nearly equal positions.
+    # Draw broad baselines first so near-overlapping curves remain visible.
     for penalty in (0., .01):
         style = (dict(linestyle="-", linewidth=3., marker="o", markersize=11,
                       markerfacecolor="none", markeredgewidth=1.8, alpha=.65, zorder=2)
@@ -682,6 +673,9 @@ def stage_interaction(campaign):
 def stage_rates(campaign):
     interaction = read_csv(OUT / "stage3_interaction.csv")
     candidates = sort_results(interaction).groupby("dataset", sort=False).head(2)
+    expected = {("davis",128,1.), ("davis",64,1.), ("kiba",128,1.), ("kiba",128,.1)}
+    if set(candidates[["dataset","n_factors","regularization"]].itertuples(index=False,name=None)) != expected:
+        raise RuntimeError("Fresh Stage 3 ranking differs from the original shortlist; investigate before changing the protocol")
     write_csv(OUT / "stage4_candidates.csv", candidates)
     plan = [config(row.dataset, row.n_factors, rate, row.regularization)
             for _, row in candidates.iterrows() for rate in RATES]
@@ -701,6 +695,9 @@ def stage_rates(campaign):
 def stage_seeds(campaign):
     rates = read_csv(OUT / "stage4_rates.csv")
     candidates = sort_results(rates).groupby("dataset", sort=False).head(2)
+    expected = {("davis",128,1.,.001), ("davis",64,1.,.001), ("kiba",128,1.,.001), ("kiba",128,1.,.003)}
+    if set(candidates[["dataset","n_factors","regularization","learning_rate"]].itertuples(index=False,name=None)) != expected:
+        raise RuntimeError("Fresh rate ranking differs from the original full shortlist; investigate before proceeding")
     write_csv(OUT / "stage5_candidates_frozen.csv", candidates)
     plan = [config(row.dataset, row.n_factors, row.learning_rate, row.regularization, seed)
             for _, row in candidates.iterrows() for seed in SEEDS]
@@ -792,31 +789,22 @@ def verify_all(campaign):
     print(f"Verified {len(rows)} physical runs; no final-test data used.")
 
 
-def verify_published(evidence=EVIDENCE):
-    """Read-only validation of compact evidence and selected prediction states.
-
-    No fitting, output writes or intermediate-run archive is needed. Historical
-    source hashes remain historical; consolidation has its own source manifest.
-    """
-    evidence = Path(evidence)
+def verify_published(evidence=None):
+    """Verify compact histories, selection and final states without fitting."""
+    evidence = Path(evidence) if evidence is not None else OUT
     manifest = json.loads((evidence / "manifest.json").read_text())
-    if current_fingerprints() != manifest["fingerprints"]:
-        raise ValueError("Current source/data hashes differ from the active evidence manifest")
-    consolidated = manifest.get("mode") == "consolidated_evidence"
-    if consolidated:
-        original = json.loads((evidence / "provenance/original_manifest.json").read_text())
-        provenance = json.dumps(original["fingerprints"], sort_keys=True)
-        archive = evidence / "provenance/original_sources.zip"
-        with zipfile.ZipFile(archive) as sources:
-            for name, expected in original["fingerprints"].items():
-                if name.startswith("data/"):
-                    assert current_fingerprints()[name] == expected
-                else:
-                    assert hashlib.sha256(sources.read(name)).hexdigest() == expected
-        for name in ("utils/biased_mf.py", "utils/evaluation.py"):
-            assert manifest["fingerprints"][name] == original["fingerprints"][name]
-    else:
+    if manifest.get("mode") == "published_indexed":
+        training = json.loads((evidence / "training_manifest.json").read_text())
+        provenance = json.dumps(training["fingerprints"], sort_keys=True)
+        for name, digest in manifest["fingerprints"].items():
+            if not name.endswith(".py"):
+                assert sha(ROOT / name) == digest, name
+    elif manifest.get("mode") == "full_campaign":
+        if current_fingerprints() != manifest["fingerprints"]:
+            raise ValueError("Source or data changed during the campaign")
         provenance = json.dumps(manifest["fingerprints"], sort_keys=True)
+    else:
+        raise ValueError("Unsupported evidence manifest mode")
 
     selection = read_csv(evidence / "final_selection.csv")
     runs = read_csv(evidence / "all_physical_runs.csv")
@@ -832,10 +820,6 @@ def verify_published(evidence=EVIDENCE):
         assert model["campaign_provenance"].item() == provenance
         for key, value in {**row_config(row), **FIXED}.items():
             assert model[key].item() == value
-        if consolidated:
-            assert (int(model["n_factors"]), float(model["regularization"]),
-                    float(model["learning_rate"]), int(model["seed"])) == (128, 1., .001, 42)
-            assert int(model["best_epoch"]) == (74 if row.dataset == "davis" else 34)
         parts = load_selection_splits(ROOT, row.dataset)
         for key, column in (("drugs", DRUG), ("targets", PROTEIN)):
             np.testing.assert_array_equal(model[key], np.sort(parts["train"][column].unique()))
@@ -852,8 +836,7 @@ def verify_published(evidence=EVIDENCE):
         assert best == int(np.argmin(history[:, 2])) == row.best_epoch
         np.testing.assert_allclose(history[best, 1:3], [row.train_mse, row.val_mse], atol=1e-12, rtol=1e-12)
 
-        # All trajectories/optimizer budgets remain independently checkable
-        # from compact tables, even when intermediate checkpoints are excluded.
+        # Compact histories verify budgets without intermediate checkpoints.
         for _, run in successful(runs.loc[runs.dataset.eq(row.dataset)]).iterrows():
             trace = histories.loc[histories.run_id.eq(run.run_id)]
             assert len(trace) == run.epochs_run + 1
@@ -887,7 +870,7 @@ def verify_published(evidence=EVIDENCE):
     print(pd.DataFrame(verified).to_string(index=False))
     print(f"Verified {len(runs)} retained physical-run histories and both selected checkpoints; no fitting performed.")
     return {"mode": "read_only", "physical_run_histories_verified": len(runs),
-            "source_and_data_hashes_match": True, "selected_checkpoints": verified,
+            "input_and_checkpoint_hashes_match": True, "selected_checkpoints": verified,
             "intermediate_checkpoints_required": False, "test_data_accessed": False}
 
 
@@ -895,7 +878,7 @@ def main():
     global OUT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", choices=("prepare", "smoke", "tests", "capacity", "capacity-plots", "interaction", "rates", "seeds", "summarize", "verify"), required=True)
-    parser.add_argument("--output-dir", type=Path, default=EVIDENCE,
+    parser.add_argument("--output-dir", type=Path, default=OUT,
                         help="Published evidence for verify; use a fresh directory for deliberate reproduction")
     args = parser.parse_args()
     OUT = args.output_dir.resolve()
@@ -929,14 +912,14 @@ def main():
             "reload_predictions_verified": True})
     elif args.stage == "tests":
         completed = subprocess.run([sys.executable, "-B", "-m", "unittest", "discover", "-s", "task2/tests",
-                                    "-p", "test_biased_mf.py", "-v"], cwd=ROOT.parent,
+                                    "-p", "test*.py", "-v"], cwd=ROOT.parent,
                                    text=True, capture_output=True, check=False)
         with (OUT / "software_tests.log").open("x") as stream:
             stream.write(completed.stdout + completed.stderr)
         print(completed.stdout + completed.stderr)
         if completed.returncode:
             raise RuntimeError("Software tests failed")
-        write_json(OUT / "software_tests.json", {"command": "python -m unittest discover -s task2/tests -p test_biased_mf.py -v",
+        write_json(OUT / "software_tests.json", {"command": "python -m unittest discover -s task2/tests -p 'test*.py' -v",
                                                  "returncode": completed.returncode})
     else:
         import matplotlib

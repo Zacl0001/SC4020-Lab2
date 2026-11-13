@@ -1,27 +1,12 @@
-"""Biased MF fitted to observed training pairs, with validation early stopping.
-
-For N training observations the objective is
-    (sum(error**2) + reg * sum(parameter**2)) / (2 * N).
-The fixed training mean is not regularized. All biases and factors are.
-A batch of B observations uses mean(data gradients) + reg/N * parameter.
-Thus the regularization coefficient does NOT depend on B. The size-weighted
-average of batch gradients equals the full gradient at fixed parameters,
-including a smaller final batch. Batch size still changes Adam's trajectory
-and number of updates per epoch; identical fitted models are not expected.
-
-No label transformation, score clipping, matrix imputation, or cold-start
-inference is performed. Unknown IDs raise ValueError. Ordered Unicode ID
-arrays define the integer mappings and permit pickle-free checkpoints.
-"""
+"""Observed-only biased MF with canonical IDs, coupled L2 and validation stopping."""
 
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-DRUG = "compound_iso_smiles"
-PROTEIN = "target_sequence"
-PAIR_KEYS = [DRUG, PROTEIN]
+from shared_data import (DRUG, PROTEIN, PAIR_KEYS, SCHEMA, ids, axis, positions,
+                         training_axes, mapping_metadata)
 PARAMETERS = ("drug_bias", "target_bias", "drug_factors", "target_factors")
 HISTORY_COLUMNS = ("epoch", "train_mse", "val_mse", "train_objective")
 
@@ -31,8 +16,7 @@ def _check_pairs(pairs, *, labels=False):
     if not isinstance(pairs, pd.DataFrame) or not set(required) <= set(pairs.columns):
         raise ValueError(f"Expected a DataFrame with columns {required}")
     for column in PAIR_KEYS:
-        if not pairs[column].map(lambda x: isinstance(x, str) and bool(x.strip())).all():
-            raise ValueError(f"{column} must contain nonblank string IDs")
+        ids(pairs, column)
     if labels:
         if pairs.empty:
             raise ValueError("Training and validation observations must be nonempty")
@@ -46,14 +30,8 @@ def _check_pairs(pairs, *, labels=False):
 
 
 def _indices(model, pairs):
-    drug = pd.Index(model["drugs"]).get_indexer(pairs[DRUG])
-    target = pd.Index(model["targets"]).get_indexer(pairs[PROTEIN])
-    if (drug < 0).any() or (target < 0).any():
-        raise ValueError(
-            f"Unknown training IDs: {(drug < 0).sum()} drug rows, "
-            f"{(target < 0).sum()} target rows; Biased MF requires known IDs"
-        )
-    return drug, target
+    return (positions(pairs, DRUG, len(model["drugs"])),
+            positions(pairs, PROTEIN, len(model["targets"])))
 
 
 def _predict_indices(model, drug, target):
@@ -118,14 +96,10 @@ def _adam_update(model, gradients, first, second, step, learning_rate):
 
 def _validate_model(model):
     try:
-        if int(model["format_version"]) != 1:
-            raise ValueError("Unsupported Biased MF checkpoint version")
+        if int(model["format_version"]) != 2 or str(model["canonical_schema"]) != SCHEMA:
+            raise ValueError("Use a freshly fitted canonical-ID Biased MF checkpoint (format 2)")
         for key in ("drugs", "targets"):
-            ids = np.asarray(model[key])
-            if (ids.ndim != 1 or not len(ids) or ids.dtype.kind != "U"
-                    or len(np.unique(ids)) != len(ids)
-                    or any(not value.strip() for value in ids)):
-                raise ValueError(f"Invalid {key} mapping")
+            axis(model[key], key)
         rank = int(model["n_factors"])
         if rank < 1:
             raise ValueError("Invalid factor count")
@@ -143,14 +117,8 @@ def _validate_model(model):
 def fit_biased_mf(training, validation, n_factors=16, learning_rate=0.01,
                   regularization=0.001, max_epochs=100, patience=10,
                   batch_size=2048, seed=42, dataset="unspecified",
-                  score_scale="supplied affinity; unchanged"):
-    """Fit using training labels only; restore minimum-validation-MSE epoch.
-
-    Validation labels select the stopping/checkpoint epoch, never gradients.
-    Epoch zero is eligible, so a worsening run returns its initialization.
-    Returned history includes every attempted epoch, even after the best one.
-    Scores remain on their supplied scale; global_mean stays fixed.
-    """
+                  score_scale="supplied affinity; unchanged", n_drugs=None, n_proteins=None):
+    """Fit training labels; restore the validation-best epoch, including epoch zero."""
     for name, value in (("n_factors", n_factors), ("max_epochs", max_epochs),
                         ("patience", patience), ("batch_size", batch_size)):
         if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or value < 1:
@@ -164,10 +132,10 @@ def fit_biased_mf(training, validation, n_factors=16, learning_rate=0.01,
     y = _check_pairs(training, labels=True)
     vy = _check_pairs(validation, labels=True)
     rng = np.random.default_rng(seed)
-    drugs = np.sort(training[DRUG].unique()).astype(str)
-    targets = np.sort(training[PROTEIN].unique()).astype(str)
+    drugs, targets = training_axes(training, n_drugs, n_proteins)
     model = {
-        "format_version": 1, "drugs": drugs, "targets": targets,
+        "format_version": 2, "canonical_schema": SCHEMA, "drugs": drugs, "targets": targets,
+        **mapping_metadata(training),
         "global_mean": float(np.mean(y)),
         "drug_bias": np.zeros(len(drugs)), "target_bias": np.zeros(len(targets)),
         "drug_factors": rng.normal(0, 0.01, (len(drugs), n_factors)),
@@ -227,7 +195,7 @@ def fit_biased_mf(training, validation, n_factors=16, learning_rate=0.01,
 
 
 def predict_biased_mf(model, pairs):
-    """Return one finite score per row, using ONLY SMILES and sequence columns.
+    """Return one finite score per row using ONLY drug_id and protein_id.
 
     Missing/unknown IDs fail clearly; no negative-index wraparound or fallback.
     Empty, correctly structured input returns shape (0,).

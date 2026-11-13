@@ -105,7 +105,8 @@ def validate_cleaning(dataset, root=ROOT):
     grouped = valid.groupby(TEXT_KEYS, as_index=False, sort=False).affinity.mean()
     known = pd.read_csv(root / CLEANED[dataset], float_precision="round_trip")
     a, b = (frame.set_index(TEXT_KEYS).sort_index() for frame in (grouped, known))
-    if not a.index.equals(b.index) or known.duplicated(TEXT_KEYS).any():
+    # Compare identity values, not pandas string-storage dtypes.
+    if list(a.index) != list(b.index) or known.duplicated(TEXT_KEYS).any():
         raise ValueError(f"{dataset}: cleaning changed pair identity or uniqueness")
     delta = np.abs(a.affinity.to_numpy() - b.affinity.to_numpy())
     if not np.allclose(a.affinity, b.affinity, atol=1e-12, rtol=0):
@@ -182,6 +183,26 @@ def original_csv_sha(rows):
     return digest.hexdigest()
 
 
+def _reports_match(recorded, current):
+    """Ignore bounded re-cleaning roundoff; keep all identity/hash checks exact."""
+    normalized = []
+    for report in (recorded, current):
+        report = dict(report)
+        cleaning = []
+        for entry in report["cleaning"]:
+            entry = dict(entry)
+            difference = entry.pop("reclean_max_abs_difference")
+            changed = entry.pop("reclean_nonidentical_floats")
+            if not math.isfinite(difference) or not 0 <= difference <= 1e-12:
+                return False
+            if not isinstance(changed, int) or not 0 <= changed <= entry["cleaned_rows"]:
+                return False
+            cleaning.append(entry)
+        report["cleaning"] = cleaning
+        normalized.append(report)
+    return normalized[0] == normalized[1]
+
+
 def prepare(root=ROOT, check_only=False):
     root = Path(root)
     report = {"schema": SCHEMA, "cleaning": [], "datasets": [], "task2_splits": [],
@@ -247,10 +268,11 @@ def prepare(root=ROOT, check_only=False):
             dataset_wide_ids_equal_old_training_order=(drugs == sorted(train_drugs) and proteins == sorted(train_proteins))))
     path = root / "data/preparation_report.json"
     if check_only:
-        assert json.loads(path.read_text()) == report
+        if not _reports_match(json.loads(path.read_text()), report):
+            raise ValueError("Preparation evidence changed; inspect before replacing it")
     else:
         text = json.dumps(report, indent=2) + "\n"
-        if path.exists() and json.loads(path.read_text()) != report:
+        if path.exists() and not _reports_match(json.loads(path.read_text()), report):
             raise ValueError("Preparation evidence changed; inspect before replacing it")
         if not path.exists():
             path.write_text(text)

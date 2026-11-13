@@ -3,9 +3,11 @@
   "dataset": "davis",
   "training_mean": 5.391476305730676,
   "training_observations": 18040,
-  "score_scale": {
-    "name": "pKd",
-    "description": "Supplied pKd values; no additional log transformation."
-  },
-  "random_seed": 42
+  "score_scale": "pKd",
+  "random_seed": 42,
+  "canonical_schema": "dataset_wide_sorted_identity_v1",
+  "drug_mapping_sha256": "df05511586b41d25caa221cd701846ee1ebf43b8b40ba3d6eb0cfbbe23bfa9f8",
+  "protein_mapping_sha256": "ae29fda94a7a8264fb39a140abf48d3a95cf2429ef0a1602b9419b48a99e9375",
+  "fit_origin": "fresh unified pipeline fit; training observations only",
+  "fit_source_sha256": "b31fed6d2ad791685baa3134246e34f91ab97c5bcef398f27bea405074d2b652"
 }

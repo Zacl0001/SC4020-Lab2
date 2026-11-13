@@ -1,0 +1,700 @@
+{
+  "notebook": "task2/task2.ipynb",
+  "workflow": "single checkpoint-review workflow",
+  "package_files": [
+    "SUBMISSION.md",
+    "data/davis_all.csv",
+    "data/kiba_all.csv",
+    "data/kiba_clean.csv",
+    "requirements.txt",
+    "shared_data.py",
+    "task2.ipynb",
+    "task2/data/davis_clean_task2.csv",
+    "task2/data/davis_split_assignment.csv",
+    "task2/data/kiba_split_assignment.csv",
+    "task2/saved_models/davis_biased_mf.npz",
+    "task2/saved_models/davis_drug_cf.npz",
+    "task2/saved_models/davis_global_mean.json",
+    "task2/saved_models/davis_protein_cf.npz",
+    "task2/saved_models/kiba_biased_mf.npz",
+    "task2/saved_models/kiba_drug_cf.npz",
+    "task2/saved_models/kiba_global_mean.json",
+    "task2/saved_models/kiba_protein_cf.npz",
+    "task2/utils/biased_mf.py",
+    "task2/utils/drug_cf.py",
+    "task2/utils/evaluation.py",
+    "task2/utils/global_mean.py",
+    "task2/utils/protein_cf.py"
+  ],
+  "package_file_count": 23,
+  "executed_in_clean_directory": true,
+  "errors": 0,
+  "code_cells": 15,
+  "sections": [
+    [
+      "1",
+      "Introduction"
+    ],
+    [
+      "2",
+      "Data preparation"
+    ],
+    [
+      "3",
+      "Canonical ID encoding"
+    ],
+    [
+      "4",
+      "Fixed warm-start data splitting"
+    ],
+    [
+      "5",
+      "Collaborative filtering methods"
+    ],
+    [
+      "6",
+      "Training procedure and saved models"
+    ],
+    [
+      "7",
+      "Hyperparameter experiments"
+    ],
+    [
+      "8",
+      "Validation and model comparison"
+    ],
+    [
+      "9",
+      "Model checkpoints and reload verification"
+    ],
+    [
+      "10",
+      "Final test evaluation"
+    ],
+    [
+      "11",
+      "Three fixed test-ligand case studies per dataset"
+    ],
+    [
+      "12",
+      "Discussion"
+    ],
+    [
+      "13",
+      "Limitations and conclusion"
+    ]
+  ],
+  "generated_figures": 10,
+  "training_calls": 0,
+  "experiment_fits": 0,
+  "recorded_knn_configurations": 48,
+  "recorded_mf_fits": 73,
+  "recomputed_metric_rows": 24,
+  "completed_case_studies": 6,
+  "checkpoints_verified": 8,
+  "predictions_metrics_cases_unchanged": true,
+  "production_checkpoints_unchanged": true,
+  "original_notebooks_unchanged": true,
+  "input_data_unchanged": true,
+  "git_history_required": false,
+  "private_artifacts_required": false,
+  "historical_result_folders_required": false,
+  "pre_generated_images_required": false,
+  "dependency_audit": {
+    "scientific_reads": [
+      ".runtime/matplotlib/fontlist-v3.11.0.json",
+      ".runtime/tmp/tmp1sr9mn5o/davis_indexed.csv",
+      ".runtime/tmp/tmp25m9rm2j/davis_test.csv",
+      ".runtime/tmp/tmp4e70cxbf/davis_drug_mapping.csv",
+      ".runtime/tmp/tmp98o0hpsp/davis_protein_mapping.csv",
+      ".runtime/tmp/tmp9xh_ikgx/kiba_train.csv",
+      ".runtime/tmp/tmpbh0wrjbi/kiba_indexed.csv",
+      ".runtime/tmp/tmpdkxxp7cj/davis_train.csv",
+      ".runtime/tmp/tmpf0w_t69w/kiba_test.csv",
+      ".runtime/tmp/tmpgesyj2c3/kiba_val.csv",
+      ".runtime/tmp/tmpnzlv2l32/kiba_protein_mapping.csv",
+      ".runtime/tmp/tmposj5ad6m/kiba_drug_mapping.csv",
+      ".runtime/tmp/tmpyn939ly2/davis_val.csv",
+      "data/davis_all.csv",
+      "data/davis_drug_mapping.csv",
+      "data/davis_indexed.csv",
+      "data/davis_protein_mapping.csv",
+      "data/kiba_all.csv",
+      "data/kiba_clean.csv",
+      "data/kiba_drug_mapping.csv",
+      "data/kiba_indexed.csv",
+      "data/kiba_protein_mapping.csv",
+      "task2.ipynb",
+      "task2/data/davis_clean_task2.csv",
+      "task2/data/davis_split_assignment.csv",
+      "task2/data/kiba_split_assignment.csv",
+      "task2/data/splits/davis_test.csv",
+      "task2/data/splits/davis_train.csv",
+      "task2/data/splits/davis_val.csv",
+      "task2/data/splits/kiba_test.csv",
+      "task2/data/splits/kiba_train.csv",
+      "task2/data/splits/kiba_val.csv",
+      "task2/results/task2_submission/review/checkpoints/davis_biased_mf.npz",
+      "task2/results/task2_submission/review/checkpoints/davis_drug_cf.npz",
+      "task2/results/task2_submission/review/checkpoints/davis_global_mean.json",
+      "task2/results/task2_submission/review/checkpoints/davis_protein_cf.npz",
+      "task2/results/task2_submission/review/checkpoints/kiba_biased_mf.npz",
+      "task2/results/task2_submission/review/checkpoints/kiba_drug_cf.npz",
+      "task2/results/task2_submission/review/checkpoints/kiba_global_mean.json",
+      "task2/results/task2_submission/review/checkpoints/kiba_protein_cf.npz",
+      "task2/saved_models/davis_biased_mf.npz",
+      "task2/saved_models/davis_drug_cf.npz",
+      "task2/saved_models/davis_global_mean.json",
+      "task2/saved_models/davis_protein_cf.npz",
+      "task2/saved_models/kiba_biased_mf.npz",
+      "task2/saved_models/kiba_drug_cf.npz",
+      "task2/saved_models/kiba_global_mean.json",
+      "task2/saved_models/kiba_protein_cf.npz"
+    ],
+    "training_calls": 0,
+    "blocked_external_files": [],
+    "network_attempts": []
+  },
+  "selected_models": {
+    "davis": "biased_mf",
+    "kiba": "biased_mf"
+  },
+  "actual_metrics": [
+    {
+      "dataset": "davis",
+      "model": "global_mean",
+      "split": "train",
+      "mse": 0.649827282070359,
+      "ci": 0.5,
+      "hit_at_1": 0.0,
+      "hit_at_5": 0.029411764705882353,
+      "hit_at_5_candidates_gt_5": 0.029411764705882353,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "global_mean",
+      "split": "val",
+      "mse": 0.675119681613273,
+      "ci": 0.5,
+      "hit_at_1": 0.10294117647058823,
+      "hit_at_5": 0.1323529411764706,
+      "hit_at_5_candidates_gt_5": 0.1323529411764706,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "protein_cf",
+      "split": "train",
+      "mse": 0.14340155462179635,
+      "ci": 0.9110759116623954,
+      "hit_at_1": 0.2647058823529412,
+      "hit_at_5": 0.6617647058823529,
+      "hit_at_5_candidates_gt_5": 0.6617647058823529,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "protein_cf",
+      "split": "val",
+      "mse": 0.28273154956443364,
+      "ci": 0.866062664455766,
+      "hit_at_1": 0.3235294117647059,
+      "hit_at_5": 0.6470588235294118,
+      "hit_at_5_candidates_gt_5": 0.6470588235294118,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "drug_cf",
+      "split": "train",
+      "mse": 0.2887365465750217,
+      "ci": 0.8650996273930889,
+      "hit_at_1": 0.20588235294117646,
+      "hit_at_5": 0.5147058823529411,
+      "hit_at_5_candidates_gt_5": 0.5147058823529411,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "drug_cf",
+      "split": "val",
+      "mse": 0.32296800454455954,
+      "ci": 0.8561065120455956,
+      "hit_at_1": 0.3088235294117647,
+      "hit_at_5": 0.6764705882352942,
+      "hit_at_5_candidates_gt_5": 0.6764705882352942,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "biased_mf",
+      "split": "train",
+      "mse": 0.026219279408426173,
+      "ci": 0.9759653335833178,
+      "hit_at_1": 0.6911764705882353,
+      "hit_at_5": 1.0,
+      "hit_at_5_candidates_gt_5": 1.0,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "biased_mf",
+      "split": "val",
+      "mse": 0.25984174352883066,
+      "ci": 0.8731753720655986,
+      "hit_at_1": 0.3382352941176471,
+      "hit_at_5": 0.7205882352941176,
+      "hit_at_5_candidates_gt_5": 0.7205882352941176,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "global_mean",
+      "split": "train",
+      "mse": 0.6933274904138493,
+      "ci": 0.5,
+      "hit_at_1": 0.16247582205029013,
+      "hit_at_5": 0.34332688588007737,
+      "hit_at_5_candidates_gt_5": 0.3356164383561644,
+      "eligible_drugs_gt_5": 2044,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "global_mean",
+      "split": "val",
+      "mse": 0.6878051847400717,
+      "ci": 0.5,
+      "hit_at_1": 0.3756990340620234,
+      "hit_at_5": 0.7178444331469243,
+      "hit_at_5_candidates_gt_5": 0.4494047619047619,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "protein_cf",
+      "split": "train",
+      "mse": 0.22292813828840724,
+      "ci": 0.8332728868653516,
+      "hit_at_1": 0.2940038684719536,
+      "hit_at_5": 0.6470019342359767,
+      "hit_at_5_candidates_gt_5": 0.6428571428571429,
+      "eligible_drugs_gt_5": 2044,
+      "fallback_fraction": 4.856785536492672e-05,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "protein_cf",
+      "split": "val",
+      "mse": 0.2397722379798415,
+      "ci": 0.826529977412064,
+      "hit_at_1": 0.6202338586680224,
+      "hit_at_5": 0.9217081850533808,
+      "hit_at_5_candidates_gt_5": 0.8472222222222222,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 5.666364460562103e-05,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "drug_cf",
+      "split": "train",
+      "mse": 0.11705452592258701,
+      "ci": 0.8907384375276498,
+      "hit_at_1": 0.7156673114119922,
+      "hit_at_5": 0.9545454545454546,
+      "hit_at_5_candidates_gt_5": 0.9540117416829745,
+      "eligible_drugs_gt_5": 2044,
+      "fallback_fraction": 0.023664687526560545,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "drug_cf",
+      "split": "val",
+      "mse": 0.20904262360606202,
+      "ci": 0.8488684527956815,
+      "hit_at_1": 0.6659888154550077,
+      "hit_at_5": 0.934926283680732,
+      "hit_at_5_candidates_gt_5": 0.873015873015873,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.025441976427923844,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "biased_mf",
+      "split": "train",
+      "mse": 0.02324745220878945,
+      "ci": 0.9575521380923967,
+      "hit_at_1": 0.879110251450677,
+      "hit_at_5": 0.9932301740812379,
+      "hit_at_5_candidates_gt_5": 0.9931506849315068,
+      "eligible_drugs_gt_5": 2044,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "kiba",
+      "model": "biased_mf",
+      "split": "val",
+      "mse": 0.18876076374531817,
+      "ci": 0.8480527495201089,
+      "hit_at_1": 0.6903914590747331,
+      "hit_at_5": 0.9522114895780376,
+      "hit_at_5_candidates_gt_5": 0.9067460317460317,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": null
+    },
+    {
+      "dataset": "davis",
+      "model": "global_mean",
+      "split": "test",
+      "mse": 0.6799584193338313,
+      "ci": 0.5,
+      "hit_at_1": 0.11764705882352941,
+      "hit_at_5": 0.17647058823529413,
+      "hit_at_5_candidates_gt_5": 0.17647058823529413,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": false
+    },
+    {
+      "dataset": "davis",
+      "model": "protein_cf",
+      "split": "test",
+      "mse": 0.28927650406047645,
+      "ci": 0.866785080397942,
+      "hit_at_1": 0.38235294117647056,
+      "hit_at_5": 0.8235294117647058,
+      "hit_at_5_candidates_gt_5": 0.8235294117647058,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": false
+    },
+    {
+      "dataset": "davis",
+      "model": "drug_cf",
+      "split": "test",
+      "mse": 0.31231070262415883,
+      "ci": 0.8550413145455611,
+      "hit_at_1": 0.4264705882352941,
+      "hit_at_5": 0.7352941176470589,
+      "hit_at_5_candidates_gt_5": 0.7352941176470589,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": false
+    },
+    {
+      "dataset": "davis",
+      "model": "biased_mf",
+      "split": "test",
+      "mse": 0.25204289267619445,
+      "ci": 0.8699807725109748,
+      "hit_at_1": 0.4411764705882353,
+      "hit_at_5": 0.7941176470588235,
+      "hit_at_5_candidates_gt_5": 0.7941176470588235,
+      "eligible_drugs_gt_5": 68,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": true
+    },
+    {
+      "dataset": "kiba",
+      "model": "global_mean",
+      "split": "test",
+      "mse": 0.7177013962335951,
+      "ci": 0.5,
+      "hit_at_1": 0.3751922091235264,
+      "hit_at_5": 0.7083546899026141,
+      "hit_at_5_candidates_gt_5": 0.435515873015873,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": false
+    },
+    {
+      "dataset": "kiba",
+      "model": "protein_cf",
+      "split": "test",
+      "mse": 0.2545726830257016,
+      "ci": 0.8246696101698999,
+      "hit_at_1": 0.5904664274730907,
+      "hit_at_5": 0.894413121476166,
+      "hit_at_5_candidates_gt_5": 0.7956349206349206,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": false
+    },
+    {
+      "dataset": "kiba",
+      "model": "drug_cf",
+      "split": "test",
+      "mse": 0.2187280472300657,
+      "ci": 0.8472837066684955,
+      "hit_at_1": 0.6540235776524859,
+      "hit_at_5": 0.9272168118913378,
+      "hit_at_5_candidates_gt_5": 0.8591269841269841,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.02243626062322946,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": false
+    },
+    {
+      "dataset": "kiba",
+      "model": "biased_mf",
+      "split": "test",
+      "mse": 0.1991850054539221,
+      "ci": 0.8479782968633058,
+      "hit_at_1": 0.6581240389543823,
+      "hit_at_5": 0.9359302921578677,
+      "hit_at_5_candidates_gt_5": 0.8759920634920635,
+      "eligible_drugs_gt_5": 1008,
+      "fallback_fraction": 0.0,
+      "origin": "saved model; metrics recomputed below",
+      "selected_by_validation": true
+    }
+  ],
+  "case_studies": [
+    {
+      "dataset": "davis",
+      "drug_id": 0,
+      "smiles": "C#Cc1cccc(Nc2ncnc3cc(OCCOC)c(OCCOC)cc23)c1",
+      "model": "biased_mf",
+      "candidates": 52,
+      "actual_best_protein_ids": [
+        316
+      ],
+      "actual_best_predicted_ranks": [
+        1
+      ],
+      "best_true_target_rank": 1,
+      "mse": 0.11072317498701024,
+      "ci": 0.8732876712328768,
+      "hit_at_1": 1.0,
+      "hit_at_5": 1.0
+    },
+    {
+      "dataset": "davis",
+      "drug_id": 1,
+      "smiles": "C=CC(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1OCCCN1CCOCC1",
+      "model": "biased_mf",
+      "candidates": 46,
+      "actual_best_protein_ids": [
+        233
+      ],
+      "actual_best_predicted_ranks": [
+        2
+      ],
+      "best_true_target_rank": 2,
+      "mse": 0.05062155691010716,
+      "ci": 0.9066265060240963,
+      "hit_at_1": 0.0,
+      "hit_at_5": 1.0
+    },
+    {
+      "dataset": "davis",
+      "drug_id": 2,
+      "smiles": "CC(C)(C)c1cc(NC(=O)Nc2ccc(-c3cn4c(n3)sc3cc(OCCN5CCOCC5)ccc34)cc2)no1",
+      "model": "biased_mf",
+      "candidates": 52,
+      "actual_best_protein_ids": [
+        194
+      ],
+      "actual_best_predicted_ranks": [
+        1
+      ],
+      "best_true_target_rank": 1,
+      "mse": 0.10482219857175865,
+      "ci": 0.9209621993127147,
+      "hit_at_1": 1.0,
+      "hit_at_5": 1.0
+    },
+    {
+      "dataset": "kiba",
+      "drug_id": 1,
+      "smiles": "Brc1ccc2[nH]nc(-c3ccccc3)c2c1",
+      "model": "biased_mf",
+      "candidates": 22,
+      "actual_best_protein_ids": [
+        58
+      ],
+      "actual_best_predicted_ranks": [
+        9
+      ],
+      "best_true_target_rank": 9,
+      "mse": 0.05511062151101586,
+      "ci": 0.8780487804878049,
+      "hit_at_1": 0.0,
+      "hit_at_5": 0.0
+    },
+    {
+      "dataset": "kiba",
+      "drug_id": 2,
+      "smiles": "Brc1ccc2c(c1)-c1[nH]ncc1C2",
+      "model": "biased_mf",
+      "candidates": 15,
+      "actual_best_protein_ids": [
+        200
+      ],
+      "actual_best_predicted_ranks": [
+        1
+      ],
+      "best_true_target_rank": 1,
+      "mse": 0.06459365522873392,
+      "ci": 0.7037037037037037,
+      "hit_at_1": 1.0,
+      "hit_at_5": 1.0
+    },
+    {
+      "dataset": "kiba",
+      "drug_id": 3,
+      "smiles": "Brc1ccc2cnc(Nc3ccncn3)cc2c1",
+      "model": "biased_mf",
+      "candidates": 12,
+      "actual_best_protein_ids": [
+        156
+      ],
+      "actual_best_predicted_ranks": [
+        2
+      ],
+      "best_true_target_rank": 2,
+      "mse": 0.12149178502650693,
+      "ci": 0.8333333333333334,
+      "hit_at_1": 0.0,
+      "hit_at_5": 1.0
+    }
+  ],
+  "checkpoint_verification": [
+    {
+      "dataset": "davis",
+      "model": "global_mean",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/davis_global_mean.json"
+    },
+    {
+      "dataset": "davis",
+      "model": "protein_cf",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/davis_protein_cf.npz"
+    },
+    {
+      "dataset": "davis",
+      "model": "drug_cf",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/davis_drug_cf.npz"
+    },
+    {
+      "dataset": "davis",
+      "model": "biased_mf",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/davis_biased_mf.npz"
+    },
+    {
+      "dataset": "kiba",
+      "model": "global_mean",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_global_mean.json"
+    },
+    {
+      "dataset": "kiba",
+      "model": "protein_cf",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_protein_cf.npz"
+    },
+    {
+      "dataset": "kiba",
+      "model": "drug_cf",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_drug_cf.npz"
+    },
+    {
+      "dataset": "kiba",
+      "model": "biased_mf",
+      "canonical_alignment": true,
+      "exact_train_predictions": true,
+      "exact_validation_predictions": true,
+      "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_biased_mf.npz"
+    }
+  ],
+  "notebook_sha256": "5b56be16d4d432e6a5d23d338532f0f06274cefdbdf0474e80df8f16a93ded8a",
+  "note": "Dependency/training guards were used only by the external verifier, not embedded in the delivered notebook.",
+  "prior_workspace_tests_passed": 32,
+  "branch_verification": {
+    "branch": "biased-mf",
+    "base_commit": "dc34c5058d06707622ed181291b7d935c1c76405",
+    "tests_passed": 18,
+    "notebook_executed": true,
+    "prediction_metric_rows_verified": 24,
+    "cases_verified": 6,
+    "checkpoints_verified": 8,
+    "plots_verified": 10,
+    "metrics_and_cases_unchanged": true,
+    "original_worktree_unchanged": true,
+    "test_command": "python -m unittest discover -s task2/tests -p 'test*.py' -v"
+  },
+  "case_selection": {
+    "minimum_measured_test_candidates": 10,
+    "rule": "three smallest eligible canonical drug IDs per dataset",
+    "uses_affinity_or_prediction_outcomes": false,
+    "chosen_drugs_unchanged": true,
+    "notebook_reexecuted": true,
+    "case_results_unchanged": true
+  }
+}
