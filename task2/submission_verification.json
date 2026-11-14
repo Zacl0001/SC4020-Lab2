@@ -673,7 +673,71 @@
       "checkpoint": "task2/results/task2_submission/review/checkpoints/kiba_biased_mf.npz"
     }
   ],
-  "notebook_sha256": "e5bd62b0ccc9dc2b96eaa32c4b8bff7329fc6cc03451f62137c854a31b9bb34c",
+  "notebook_sha256": "60db8b58700ae42eb60a1caf51f93ec506775ddf149aaeae3593c9cb61413054",
+  "report_figure_verification": {
+    "base_commit": "99c00528864fc7728639c5a8e9897745b13f740e",
+    "independent_package_files": 23,
+    "code_cells": 16,
+    "generated_figures": 12,
+    "published_figures": 7,
+    "dpi": 300,
+    "training_calls": 0,
+    "campaign_metadata_unchanged": true,
+    "metrics_csv_byte_identical": true,
+    "case_studies_exact": 6,
+    "checkpoint_checks_exact": 8,
+    "files": [
+      {
+        "path": "task2/results/figures/final_mse_comparison.png",
+        "width": 3571,
+        "height": 1167,
+        "bytes": 138790,
+        "sha256": "dfe6461073aceccfe3d730060f1fac7360defb820bd98379adb5c6abd6c3ebf5"
+      },
+      {
+        "path": "task2/results/figures/knn_validation_grid.png",
+        "width": 3570,
+        "height": 2369,
+        "bytes": 465275,
+        "sha256": "adce4c45f41901c3e47ba9a7846c75bf161889ec719665b826b7be6c7ebfa4cf"
+      },
+      {
+        "path": "task2/results/figures/mf_capacity_and_weak_l2.png",
+        "width": 3870,
+        "height": 2369,
+        "bytes": 485024,
+        "sha256": "70a63f6af7c77a33d0d4180149d71f524a238d30560654d9a1804b572f1466dd"
+      },
+      {
+        "path": "task2/results/figures/mf_capacity_learning_curves.png",
+        "width": 3871,
+        "height": 1168,
+        "bytes": 264185,
+        "sha256": "a081ccf70f7bf420bf8185a2a6073197f47f88ea1191a060666a8e6f2108c88b"
+      },
+      {
+        "path": "task2/results/figures/mf_regularization_capacity.png",
+        "width": 3536,
+        "height": 1469,
+        "bytes": 239478,
+        "sha256": "a005ae4051e8af6fcf329e9adb465a6923da0a0363d21d8da3c9a74315af058e"
+      },
+      {
+        "path": "task2/results/figures/mf_learning_rate_refinement.png",
+        "width": 3570,
+        "height": 1169,
+        "bytes": 206722,
+        "sha256": "314081a8fff1d9803833dcf6925358ea01c29ddcd0b661089c3a30f7d7437764"
+      },
+      {
+        "path": "task2/results/figures/mf_seed_robustness.png",
+        "width": 3565,
+        "height": 1168,
+        "bytes": 146019,
+        "sha256": "1ec847846a6ac3c3eba75554e775a5c7fb459aa8f2104dce912aa384fc4146f3"
+      }
+    ]
+  },
   "published_metrics": {
     "path": "task2/results/train_validation_test_metrics.csv",
     "generated_path": "task2/results/task2_submission/review/train_validation_test_metrics.csv",

@@ -20,6 +20,14 @@ so their raw MSE values are not directly comparable. Training rows are in-sample
 validation selects models and fixed settings are then evaluated on test data.
 The notebook documents tie handling, candidate-set effects and prior test exposure.
 
+## Report figures
+
+Seven verified 300-dpi PNGs are published in [`figures/`](figures/).
+The [figure guide](figures/README.md) provides captions, experimental conditions
+and the distinction between recorded validation experiments and recomputed model
+evaluation. These images are outputs; the notebook regenerates them without
+reading the published copies.
+
 ## Reproduce the CSV
 
 Follow the environment and Run All instructions in [`task2/README.md`](../README.md).
