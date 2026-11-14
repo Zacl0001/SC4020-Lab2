@@ -18,7 +18,7 @@ from task2 import run_biased_mf as experiments
 def synthetic_splits():
     rng = np.random.default_rng(123)
     p, q = rng.normal(size=(8, 2)), rng.normal(size=(7, 2))
-    rows = [(f"d{i}", f"t{j}", 5 + .3 * i - .2 * j + .3 * p[i] @ q[j])
+    rows = [(i, j, 5 + .3 * i - .2 * j + .3 * p[i] @ q[j])
             for i in range(8) for j in range(7)]
     frame = pd.DataFrame(rows, columns=mf.PAIR_KEYS + ["affinity"])
     validation = np.arange(len(frame)) % 5 == 0
@@ -28,8 +28,8 @@ def synthetic_splits():
 def gradient_fixture():
     rng = np.random.default_rng(12)
     model = {
-        "drugs": np.array(["d0", "d1", "d2", "d3"]),
-        "targets": np.array(["t0", "t1", "t2"]), "global_mean": 2.3,
+        "drugs": np.arange(4),
+        "targets": np.arange(3), "global_mean": 2.3,
         "drug_bias": rng.normal(0, .2, 4), "target_bias": rng.normal(0, .2, 3),
         "drug_factors": rng.normal(0, .3, (4, 2)),
         "target_factors": rng.normal(0, .3, (3, 2)),
@@ -149,8 +149,8 @@ class ModelTests(unittest.TestCase):
 
     def test_validation_cannot_expand_training_mapping(self):
         validation = self.val.copy()
-        validation.loc[0, mf.DRUG] = "validation-only-ID"
-        with self.assertRaisesRegex(ValueError, "Unknown training IDs"):
+        validation.loc[0, mf.DRUG] = int(self.train[mf.DRUG].max()) + 1
+        with self.assertRaisesRegex(ValueError, "Unknown canonical IDs"):
             mf.fit_biased_mf(self.train, validation, max_epochs=1)
 
     def test_seed_is_deterministic_and_inputs_are_unchanged(self):
@@ -163,7 +163,7 @@ class ModelTests(unittest.TestCase):
 
     def test_pickle_free_round_trip(self):
         model = self.fit(dataset="synthetic", score_scale="unchanged synthetic scale")
-        with tempfile.TemporaryDirectory(dir="/tmp/opencode") as directory:
+        with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "model.npz"
             mf.save_biased_mf(model, path)
             with np.load(path, allow_pickle=False) as archive:
@@ -218,6 +218,7 @@ class ModelTests(unittest.TestCase):
             for value in ("unseen", None, ""):
                 with self.subTest(column=column, value=value):
                     bad = self.val.copy()
+                    bad[column] = bad[column].astype(object)
                     bad.loc[0, column] = value
                     with self.assertRaises(ValueError):
                         mf.predict_biased_mf(model, bad)
@@ -253,7 +254,7 @@ class ModelTests(unittest.TestCase):
 class ExperimentTests(unittest.TestCase):
     def test_candidate_counts_and_supplementary_hit(self):
         counts = [1, 3, 5, 6, 9]
-        frame = pd.DataFrame([(f"d{i}", f"t{j}", float(j))
+        frame = pd.DataFrame([(i, j, float(j))
                               for i, n in enumerate(counts) for j in range(n)],
                              columns=mf.PAIR_KEYS + ["affinity"])
         histogram, summary = experiments.candidate_distribution(frame, "synthetic")
@@ -281,18 +282,25 @@ class ExperimentTests(unittest.TestCase):
 
         def guarded_read(path, *args, **kwargs):
             path = Path(path)
-            self.assertIn(path.name, {f"{ds}_{part}.csv" for ds in ("davis", "kiba")
-                                     for part in ("train", "val")})
+            allowed = {f"{ds}_{part}.csv" for ds in ("davis", "kiba") for part in ("train", "val")}
+            allowed |= {f"{ds}_{kind}_mapping.csv" for ds in ("davis", "kiba") for kind in ("drug", "protein")}
+            self.assertIn(path.name, allowed)
             opened.append(path.name)
             return real_read_csv(path, *args, **kwargs)
 
-        with tempfile.TemporaryDirectory(dir="/tmp/opencode") as directory:
-            root = Path(directory)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "task2"
             splits = root / "data" / "splits"
             splits.mkdir(parents=True)
+            mappings = root.parent / "data"
+            mappings.mkdir(parents=True)
             for dataset in ("davis", "kiba"):
                 train.to_csv(splits / f"{dataset}_train.csv", index=False)
                 val.to_csv(splits / f"{dataset}_val.csv", index=False)
+                pd.DataFrame({mf.DRUG: range(8), "compound_iso_smiles": [f"d{i:02d}" for i in range(8)]}).to_csv(
+                    mappings / f"{dataset}_drug_mapping.csv", index=False)
+                pd.DataFrame({mf.PROTEIN: range(7), "target_sequence": [f"t{i:02d}" for i in range(7)]}).to_csv(
+                    mappings / f"{dataset}_protein_mapping.csv", index=False)
             # No test file exists; any attempted CSV access outside the four
             # allowed files fails. Exercise actual fitting, selection and saves.
             with patch.object(experiments.pd, "read_csv", side_effect=guarded_read), \
@@ -301,7 +309,7 @@ class ExperimentTests(unittest.TestCase):
                     root, grid=((2, .01, .001), (3, .005, .01)),
                     max_epochs=3, reuse_baseline=False)
             self.assertEqual(len(selected), 2)
-            self.assertEqual(len(opened), 4)
+            self.assertEqual(sum(name.endswith(("_train.csv", "_val.csv")) for name in opened), 4)
             for dataset in ("davis", "kiba"):
                 self.assertTrue((root / "saved_models" / f"{dataset}_biased_mf.npz").exists())
 

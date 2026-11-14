@@ -1,0 +1,6 @@
+# Python 3.12.3; install before executing the submission offline.
+numpy==2.5.4
+pandas==3.1.1
+matplotlib==3.11.2
+nbconvert==7.17.2
+ipykernel==7.4.0

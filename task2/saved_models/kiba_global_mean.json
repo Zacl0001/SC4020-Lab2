@@ -1,11 +1,13 @@
 {
   "model": "Global Mean",
   "dataset": "kiba",
-  "training_mean": 11.721006434637525,
+  "training_mean": 11.721006434637527,
   "training_observations": 82359,
-  "score_scale": {
-    "name": "KIBA score",
-    "description": "Original supplied KIBA scale; no transformation."
-  },
-  "random_seed": 42
+  "score_scale": "supplied transformed KIBA",
+  "random_seed": 42,
+  "canonical_schema": "dataset_wide_sorted_identity_v1",
+  "drug_mapping_sha256": "0e78df976c08ea444afc1e604803b7132060c28240b4742de484ae279d79dba2",
+  "protein_mapping_sha256": "c317492b64706e380d6c10d3283be777938582a89e3a04d8a7573d546e49fa1d",
+  "fit_origin": "fresh unified pipeline fit; training observations only",
+  "fit_source_sha256": "b31fed6d2ad791685baa3134246e34f91ab97c5bcef398f27bea405074d2b652"
 }
